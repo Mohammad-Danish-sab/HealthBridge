@@ -1,7 +1,7 @@
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from app.core.config import settings
-from app.api.v1 import auth, doctors, appointments, records
+from app.api.v1 import appointments, auth, doctors, records
 
 app = FastAPI(
     title=settings.PROJECT_NAME,

@@ -2,8 +2,8 @@ from typing import List
 from datetime import date
 from fastapi import APIRouter, Depends, HTTPException, status, Query
 from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy.future import select
-from sqlalchemy import and_, or_
+from sqlalchemy import and_, select
+from sqlalchemy.orm import selectinload
 
 from app.db.session import get_db
 from app.models.user import User, UserRole
@@ -46,6 +46,22 @@ async def book_appointment(
         raise HTTPException(status_code=404, detail="Doctor profile not found.")
 
     # Check collision
+    if booking_in.end_time <= booking_in.start_time:
+        raise HTTPException(status_code=422, detail="end_time must be later than start_time.")
+
+    available_slots = await get_available_slots(
+        db,
+        booking_in.doctor_id,
+        booking_in.appointment_date,
+    )
+    if not any(
+        slot.is_available
+        and slot.start_time == booking_in.start_time
+        and slot.end_time == booking_in.end_time
+        for slot in available_slots
+    ):
+        raise HTTPException(status_code=400, detail="The requested time is not an available slot.")
+
     collision_res = await db.execute(
         select(Appointment).where(
             and_(
@@ -77,7 +93,12 @@ async def book_appointment(
 
     # Re-query with eager relationships
     result = await db.execute(
-        select(Appointment).where(Appointment.id == appointment.id)
+        select(Appointment)
+        .options(
+            selectinload(Appointment.patient),
+            selectinload(Appointment.doctor).selectinload(DoctorProfile.user),
+        )
+        .where(Appointment.id == appointment.id)
     )
     return result.scalars().first()
 
@@ -86,7 +107,10 @@ async def get_my_appointments(
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(allow_all)
 ):
-    query = select(Appointment)
+    query = select(Appointment).options(
+        selectinload(Appointment.patient),
+        selectinload(Appointment.doctor).selectinload(DoctorProfile.user),
+    )
 
     if current_user.role == UserRole.PATIENT:
         query = query.where(Appointment.patient_id == current_user.id)
@@ -112,6 +136,18 @@ async def update_appointment_status(
     appointment = result.scalars().first()
     if not appointment:
         raise HTTPException(status_code=404, detail="Appointment not found.")
+
+    if current_user.role == UserRole.PATIENT:
+        if appointment.patient_id != current_user.id:
+            raise HTTPException(status_code=403, detail="Access denied.")
+        if status_in.status != AppointmentStatus.CANCELLED:
+            raise HTTPException(status_code=403, detail="Patients may only cancel appointments.")
+    elif current_user.role == UserRole.DOCTOR:
+        doctor = await db.scalar(
+            select(DoctorProfile).where(DoctorProfile.user_id == current_user.id)
+        )
+        if doctor is None or appointment.doctor_id != doctor.id:
+            raise HTTPException(status_code=403, detail="Access denied.")
 
     appointment.status = status_in.status
     if status_in.cancellation_reason:

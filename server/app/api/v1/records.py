@@ -1,7 +1,8 @@
 from typing import List, Optional
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy.future import select
+from sqlalchemy import select
+from sqlalchemy.orm import selectinload
 
 from app.db.session import get_db
 from app.models.user import User, UserRole
@@ -65,7 +66,14 @@ async def create_prescription(
 
     await db.commit()
 
-    result = await db.execute(select(Prescription).where(Prescription.id == prescription.id))
+    result = await db.execute(
+        select(Prescription)
+        .options(
+            selectinload(Prescription.items),
+            selectinload(Prescription.doctor).selectinload(DoctorProfile.user),
+        )
+        .where(Prescription.id == prescription.id)
+    )
     return result.scalars().first()
 
 @router.get("/prescriptions/patient/{patient_id}", response_model=List[PrescriptionResponse])
@@ -79,6 +87,10 @@ async def get_patient_prescriptions(
 
     result = await db.execute(
         select(Prescription)
+        .options(
+            selectinload(Prescription.items),
+            selectinload(Prescription.doctor).selectinload(DoctorProfile.user),
+        )
         .where(Prescription.patient_id == patient_id)
         .order_by(Prescription.created_at.desc())
     )
@@ -94,8 +106,25 @@ async def create_lab_report(
     if current_user.role == UserRole.DOCTOR:
         doc_res = await db.execute(select(DoctorProfile).where(DoctorProfile.user_id == current_user.id))
         doc = doc_res.scalars().first()
-        if doc:
-            doctor_id = doc.id
+        if not doc:
+            raise HTTPException(status_code=400, detail="Doctor profile missing.")
+        doctor_id = doc.id
+        appointment = await db.scalar(
+            select(Appointment).where(
+                Appointment.doctor_id == doctor_id,
+                Appointment.patient_id == report_in.patient_id,
+            )
+        )
+        if appointment is None:
+            raise HTTPException(
+                status_code=403,
+                detail="A lab report can only be added for one of your patients.",
+            )
+    elif current_user.role == UserRole.PATIENT:
+        if current_user.id != report_in.patient_id:
+            raise HTTPException(status_code=403, detail="Access denied.")
+    else:
+        raise HTTPException(status_code=403, detail="Insufficient permissions.")
 
     report = LabReport(
         patient_id=report_in.patient_id,
