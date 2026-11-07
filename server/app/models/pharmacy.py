@@ -2,7 +2,7 @@ import enum
 from datetime import datetime
 from sqlalchemy import Column, String, Integer, Float, ForeignKey, DateTime, Enum, Text, Boolean
 from sqlalchemy.orm import relationship
-from app.models.user import Base
+from app.db.session import Base
 
 class OrderStatus(str, enum.Enum):
     PLACED = "PLACED"
@@ -10,6 +10,22 @@ class OrderStatus(str, enum.Enum):
     DISPATCHED = "DISPATCHED"
     DELIVERED = "DELIVERED"
     CANCELLED = "CANCELLED"
+
+class ComplaintStatus(str, enum.Enum):
+    OPEN = "OPEN"
+    IN_PROGRESS = "IN_PROGRESS"
+    RESOLVED = "RESOLVED"
+    CLOSED = "CLOSED"
+
+class Pharmacy(Base):
+    __tablename__ = "pharmacies"
+
+    id = Column(Integer, primary_key=True, index=True)
+    name = Column(String, nullable=False, index=True)
+    address = Column(String, nullable=False)
+    phone_number = Column(String, nullable=True)
+    is_active = Column(Boolean, default=True, nullable=False)
+    created_at = Column(DateTime, default=datetime.utcnow, nullable=False)
 
 class Medicine(Base):
     __tablename__ = "medicines"
@@ -25,7 +41,7 @@ class Medicine(Base):
     created_at = Column(DateTime, default=datetime.utcnow, nullable=False)
 
 class Order(Base):
-    __tablename__ = "pharmacy_orders"
+    __tablename__ = "orders"
 
     id = Column(Integer, primary_key=True, index=True)
     patient_id = Column(Integer, ForeignKey("users.id", ondelete="CASCADE"), nullable=False)
@@ -36,21 +52,33 @@ class Order(Base):
     created_at = Column(DateTime, default=datetime.utcnow, nullable=False)
     updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow, nullable=False)
 
-    patient = relationship("User", backref="pharmacy_orders")
-    prescription = relationship("Prescription", backref="pharmacy_orders")
+    patient = relationship("User", backref="orders")
     items = relationship("OrderItem", back_populates="order", cascade="all, delete-orphan")
 
 class OrderItem(Base):
-    __tablename__ = "pharmacy_order_items"
+    __tablename__ = "order_items"
 
     id = Column(Integer, primary_key=True, index=True)
-    order_id = Column(Integer, ForeignKey("pharmacy_orders.id", ondelete="CASCADE"), nullable=False)
+    order_id = Column(Integer, ForeignKey("orders.id", ondelete="CASCADE"), nullable=False)
     medicine_id = Column(Integer, ForeignKey("medicines.id", ondelete="RESTRICT"), nullable=False)
     quantity = Column(Integer, nullable=False)
     unit_price = Column(Float, nullable=False)
 
     order = relationship("Order", back_populates="items")
     medicine = relationship("Medicine")
+
+class Complaint(Base):
+    __tablename__ = "complaints"
+
+    id = Column(Integer, primary_key=True, index=True)
+    user_id = Column(Integer, ForeignKey("users.id", ondelete="CASCADE"), nullable=False)
+    subject = Column(String, nullable=False)
+    description = Column(Text, nullable=False)
+    status = Column(Enum(ComplaintStatus), default=ComplaintStatus.OPEN, nullable=False)
+    resolution_notes = Column(Text, nullable=True)
+    created_at = Column(DateTime, default=datetime.utcnow, nullable=False)
+
+    user = relationship("User", backref="complaints")
 
 class AuditLog(Base):
     __tablename__ = "audit_logs"

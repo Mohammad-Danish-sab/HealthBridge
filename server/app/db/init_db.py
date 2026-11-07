@@ -1,17 +1,12 @@
 import asyncio
-
 from app.db.session import engine
-from app.models.doctor import DoctorAvailability, DoctorProfile
-from app.models.medical_record import LabReport, Prescription, PrescriptionItem
-from app.models.appointment import Appointment
-from app.models.user import Base, User
+from app.db.base import Base
 
-
-async def initialize_database() -> None:
-    async with engine.begin() as connection:
-        await connection.run_sync(Base.metadata.create_all)
-    await engine.dispose()
-
+async def init_db():
+    async with engine.begin() as conn:
+        print("Creating PostgreSQL tables for HealthBridge...")
+        await conn.run_sync(Base.metadata.create_all)
+        print("Database tables created successfully.")
 
 if __name__ == "__main__":
-    asyncio.run(initialize_database())
+    asyncio.run(init_db())
