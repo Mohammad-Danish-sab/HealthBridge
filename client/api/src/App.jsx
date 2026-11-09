@@ -1,16 +1,21 @@
-import React from 'react';
-import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
-import { AuthProvider } from './context/AuthContext';
-import { ProtectedRoute } from './components/ProtectedRoute';
-import { Navbar } from './components/Navbar';
+import React from "react";
+import {
+  BrowserRouter as Router,
+  Routes,
+  Route,
+  Navigate,
+} from "react-router-dom";
+import { AuthProvider } from "./context/AuthContext";
+import { ProtectedRoute } from "./components/ProtectedRoute";
+import { Navbar } from "./components/Navbar";
 
-import Login from './pages/Login';
-import Register from './pages/Register';
-import PatientDashboard from './pages/PatientDashboard';
-import DoctorSearch from './pages/DoctorSearch';
-import MedicalRecords from './pages/MedicalRecords';
-import PharmacyCatalog from './pages/PharmacyCatalog';
-import Notifications from './pages/Notifications';
+import Login from "./pages/Login";
+import Register from "./pages/Register";
+import PatientDashboard from "./pages/PatientDashboard";
+import DoctorSearch from "./pages/DoctorSearch";
+import MedicalRecords from "./pages/MedicalRecords";
+import PharmacyCatalog from "./pages/PharmacyCatalog";
+import Notifications from "./pages/Notifications";
 
 function App() {
   return (
@@ -22,10 +27,17 @@ function App() {
             <Routes>
               <Route path="/login" element={<Login />} />
               <Route path="/register" element={<Register />} />
-              <Route path="/unauthorized" element={<div className="p-12 text-center text-xl font-bold">Unauthorized Access</div>} />
+              <Route
+                path="/unauthorized"
+                element={
+                  <div className="p-12 text-center text-xl font-bold">
+                    Unauthorized Access
+                  </div>
+                }
+              />
 
               {/* Patient Protected Routes */}
-              <Route element={<ProtectedRoute allowedRoles={['PATIENT']} />}>
+              <Route element={<ProtectedRoute allowedRoles={["PATIENT"]} />}>
                 <Route path="/dashboard" element={<PatientDashboard />} />
                 <Route path="/doctors" element={<DoctorSearch />} />
                 <Route path="/medical-records" element={<MedicalRecords />} />
