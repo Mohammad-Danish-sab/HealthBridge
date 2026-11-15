@@ -1,22 +1,29 @@
 import React from "react";
-import { Link, useNavigate } from "react-router-dom";
+import { Link } from "react-router-dom";
 import { useAuth } from "../context/AuthContext";
 import {
   Stethoscope,
   Calendar,
   FileText,
   ShoppingBag,
-  MessageSquare,
   Bell,
-  User,
   LogOut,
+  Users,
+  Clock,
+  ShieldCheck,
+  LayoutDashboard,
 } from "lucide-react";
 
 export const Navbar = () => {
   const { user, logout } = useAuth();
-  const navigate = useNavigate();
 
   if (!user) return null;
+
+  const getHomeRoute = () => {
+    if (user.role === "DOCTOR") return "/doctor/dashboard";
+    if (user.role === "ADMIN") return "/admin/dashboard";
+    return "/dashboard";
+  };
 
   return (
     <nav className="bg-white border-b border-gray-200 sticky top-0 z-50">
@@ -24,42 +31,98 @@ export const Navbar = () => {
         <div className="flex justify-between h-16">
           <div className="flex items-center space-x-8">
             <Link
-              to="/dashboard"
+              to={getHomeRoute()}
               className="text-2xl font-black text-indigo-600 tracking-tight"
             >
               HealthBridge
             </Link>
+
+            {/* Patient Links */}
             {user.role === "PATIENT" && (
               <div className="hidden md:flex space-x-4">
                 <Link
                   to="/dashboard"
-                  className="text-gray-600 hover:text-indigo-600 px-3 py-2 rounded-md text-sm font-medium"
+                  className="text-gray-600 hover:text-indigo-600 px-3 py-2 rounded-md text-sm font-medium flex items-center gap-1.5"
                 >
-                  Dashboard
+                  <LayoutDashboard className="h-4 w-4" /> Dashboard
                 </Link>
                 <Link
                   to="/doctors"
-                  className="text-gray-600 hover:text-indigo-600 px-3 py-2 rounded-md text-sm font-medium flex items-center gap-1"
+                  className="text-gray-600 hover:text-indigo-600 px-3 py-2 rounded-md text-sm font-medium flex items-center gap-1.5"
                 >
                   <Stethoscope className="h-4 w-4" /> Find Doctors
                 </Link>
                 <Link
                   to="/appointments"
-                  className="text-gray-600 hover:text-indigo-600 px-3 py-2 rounded-md text-sm font-medium flex items-center gap-1"
+                  className="text-gray-600 hover:text-indigo-600 px-3 py-2 rounded-md text-sm font-medium flex items-center gap-1.5"
                 >
                   <Calendar className="h-4 w-4" /> Appointments
                 </Link>
                 <Link
                   to="/medical-records"
-                  className="text-gray-600 hover:text-indigo-600 px-3 py-2 rounded-md text-sm font-medium flex items-center gap-1"
+                  className="text-gray-600 hover:text-indigo-600 px-3 py-2 rounded-md text-sm font-medium flex items-center gap-1.5"
                 >
                   <FileText className="h-4 w-4" /> Records
                 </Link>
                 <Link
                   to="/pharmacy"
-                  className="text-gray-600 hover:text-indigo-600 px-3 py-2 rounded-md text-sm font-medium flex items-center gap-1"
+                  className="text-gray-600 hover:text-indigo-600 px-3 py-2 rounded-md text-sm font-medium flex items-center gap-1.5"
                 >
                   <ShoppingBag className="h-4 w-4" /> Pharmacy
+                </Link>
+              </div>
+            )}
+
+            {/* Doctor Links */}
+            {user.role === "DOCTOR" && (
+              <div className="hidden md:flex space-x-4">
+                <Link
+                  to="/doctor/dashboard"
+                  className="text-gray-600 hover:text-emerald-600 px-3 py-2 rounded-md text-sm font-medium flex items-center gap-1.5"
+                >
+                  <LayoutDashboard className="h-4 w-4" /> Dashboard
+                </Link>
+                <Link
+                  to="/doctor/appointments"
+                  className="text-gray-600 hover:text-emerald-600 px-3 py-2 rounded-md text-sm font-medium flex items-center gap-1.5"
+                >
+                  <Calendar className="h-4 w-4" /> Appointments
+                </Link>
+                <Link
+                  to="/doctor/patients"
+                  className="text-gray-600 hover:text-emerald-600 px-3 py-2 rounded-md text-sm font-medium flex items-center gap-1.5"
+                >
+                  <Users className="h-4 w-4" /> Patients
+                </Link>
+                <Link
+                  to="/doctor/availability"
+                  className="text-gray-600 hover:text-emerald-600 px-3 py-2 rounded-md text-sm font-medium flex items-center gap-1.5"
+                >
+                  <Clock className="h-4 w-4" /> Availability
+                </Link>
+              </div>
+            )}
+
+            {/* Admin Links */}
+            {user.role === "ADMIN" && (
+              <div className="hidden md:flex space-x-4">
+                <Link
+                  to="/admin/dashboard"
+                  className="text-gray-600 hover:text-purple-600 px-3 py-2 rounded-md text-sm font-medium flex items-center gap-1.5"
+                >
+                  <LayoutDashboard className="h-4 w-4" /> Command Center
+                </Link>
+                <Link
+                  to="/admin/users"
+                  className="text-gray-600 hover:text-purple-600 px-3 py-2 rounded-md text-sm font-medium flex items-center gap-1.5"
+                >
+                  <ShieldCheck className="h-4 w-4" /> Users & Verification
+                </Link>
+                <Link
+                  to="/admin/pharmacy"
+                  className="text-gray-600 hover:text-purple-600 px-3 py-2 rounded-md text-sm font-medium flex items-center gap-1.5"
+                >
+                  <ShoppingBag className="h-4 w-4" /> Pharmacy Inventory
                 </Link>
               </div>
             )}

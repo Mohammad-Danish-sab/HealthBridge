@@ -16,13 +16,11 @@ const DoctorPatientChat = ({ recipientId, recipientName }) => {
 
   useEffect(() => {
     if (user && recipientId) {
-      // Load historical chat
       chatService.getHistory(recipientId).then((data) => {
         setMessages(data);
         scrollToBottom();
       });
 
-      // Connect WebSocket session
       const token = localStorage.getItem("hb_access_token");
       socketRef.current = chatService.connectWebSocket(token, (event) => {
         if (event.type === "CHAT_MESSAGE") {
