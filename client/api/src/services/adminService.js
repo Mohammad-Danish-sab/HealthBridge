@@ -15,4 +15,14 @@ export const adminService = {
     const response = await api.patch(`/admin/users/${userId}/toggle-status`);
     return response.data;
   },
+
+  getDoctors: async () => {
+    const response = await api.get("/admin/doctors");
+    return response.data;
+  },
+
+  getAuditLogs: async (limit = 100) => {
+    const response = await api.get("/admin/audit-logs", { params: { limit } });
+    return response.data;
+  },
 };
