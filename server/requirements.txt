@@ -4,3 +4,11 @@ pydantic-settings
 SQLAlchemy
 asyncpg
 python-jose[cryptography]
+openai
+python-multipart
+aiosqlite
+asyncpg
+httpx
+pytest
+pytest-asyncio
+pypdf

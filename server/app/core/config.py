@@ -18,8 +18,12 @@ class Settings(BaseSettings):
     POSTGRES_PASSWORD: str = ""
     POSTGRES_DB: str = "healthbridge"
     POSTGRES_PORT: int = 5432
+    DATABASE_URL: str = "sqlite+aiosqlite:///healthbridge.db"
 
     BACKEND_CORS_ORIGINS: list[str] = []
+    AI_PROVIDER_API_KEY: str | None = None
+    AI_MODEL_NAME: str = "gpt-4o-mini"
+    AI_MAX_TOKENS: int = 500
 
     model_config = SettingsConfigDict(
         env_file=SERVER_ROOT / ".env",
@@ -30,6 +34,9 @@ class Settings(BaseSettings):
 
     @property
     def database_url(self) -> URL:
+        if self.DATABASE_URL.startswith("sqlite"):
+            database = str(SERVER_ROOT / "healthbridge.db")
+            return URL.create(drivername="sqlite+aiosqlite", database=database)
         return URL.create(
             drivername="postgresql+asyncpg",
             username=self.POSTGRES_USER,

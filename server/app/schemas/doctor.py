@@ -8,7 +8,8 @@ from app.schemas.user import UserResponse
 
 class DoctorProfileCreate(BaseModel):
     specialization: str = Field(min_length=1, max_length=150)
-    license_number: str = Field(min_length=1, max_length=100)
+    license_number: str = Field(default="", max_length=100)
+    qualifications: str | None = None
     experience_years: int = Field(default=0, ge=0)
     bio: str | None = None
     consultation_fee: float = Field(default=0, ge=0)

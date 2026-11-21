@@ -14,6 +14,24 @@ from app.schemas.doctor import AvailabilityItem, DoctorProfileCreate, DoctorProf
 
 router = APIRouter(prefix="/doctors", tags=["Doctors"])
 _doctor_or_admin = RoleChecker([UserRole.DOCTOR, UserRole.ADMIN])
+_admin_only = RoleChecker([UserRole.ADMIN])
+
+
+@router.get("/search", response_model=list[DoctorProfileResponse])
+async def search_doctors(
+    specialization: str | None = None,
+    db: AsyncSession = Depends(get_db),
+) -> list[DoctorProfile]:
+    query = (
+        select(DoctorProfile)
+        .options(selectinload(DoctorProfile.user))
+        .where(DoctorProfile.is_approved.is_(True))
+        .order_by(DoctorProfile.id)
+    )
+    if specialization:
+        query = query.where(DoctorProfile.specialization.ilike(f"%{specialization}%"))
+    result = await db.scalars(query)
+    return list(result.all())
 
 
 @router.get("/", response_model=list[DoctorProfileResponse])
@@ -59,7 +77,10 @@ async def create_my_profile(
     )
     if existing is not None:
         raise HTTPException(status_code=409, detail="A doctor profile already exists.")
-    profile = DoctorProfile(user_id=current_user.id, **profile_in.model_dump())
+    profile_data = profile_in.model_dump(exclude={"qualifications"})
+    if not profile_data.get("license_number"):
+        profile_data["license_number"] = f"TEMP-{current_user.id}"
+    profile = DoctorProfile(user_id=current_user.id, **profile_data)
     db.add(profile)
     await db.commit()
     result = await db.scalar(
@@ -70,6 +91,34 @@ async def create_my_profile(
     if result is None:
         raise HTTPException(status_code=500, detail="The doctor profile could not be loaded.")
     return result
+
+
+@router.post("/profile", response_model=DoctorProfileResponse, status_code=status.HTTP_201_CREATED)
+async def create_profile_alias(
+    profile_in: DoctorProfileCreate,
+    current_user: Annotated[User, Depends(_doctor_or_admin)],
+    db: Annotated[AsyncSession, Depends(get_db)],
+) -> DoctorProfile:
+    return await create_my_profile(profile_in, current_user, db)
+
+
+@router.patch("/{doctor_id}/verify", response_model=DoctorProfileResponse)
+async def verify_doctor(
+    doctor_id: int,
+    current_user: Annotated[User, Depends(_admin_only)],
+    db: Annotated[AsyncSession, Depends(get_db)],
+) -> DoctorProfile:
+    profile = await db.scalar(
+        select(DoctorProfile)
+        .options(selectinload(DoctorProfile.user))
+        .where(DoctorProfile.id == doctor_id)
+    )
+    if profile is None:
+        raise HTTPException(status_code=404, detail="Doctor profile not found.")
+    profile.is_approved = True
+    await db.commit()
+    await db.refresh(profile)
+    return profile
 
 
 @router.put("/me/availability", response_model=list[AvailabilityItem])
@@ -97,6 +146,15 @@ async def replace_my_availability(
     )
     await db.commit()
     return items
+
+
+@router.post("/availability", response_model=list[AvailabilityItem])
+async def replace_availability_alias(
+    items: list[AvailabilityItem],
+    current_user: Annotated[User, Depends(_doctor_or_admin)],
+    db: Annotated[AsyncSession, Depends(get_db)],
+) -> list[AvailabilityItem]:
+    return await replace_my_availability(items, current_user, db)
 
 
 @router.get("/{doctor_id}", response_model=DoctorProfileResponse)

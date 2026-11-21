@@ -1,4 +1,4 @@
-from app.db.session import Base
+from app.models.user import Base
 from app.models.user import User
 from app.models.doctor import DoctorProfile, DoctorAvailability
 from app.models.appointment import Appointment

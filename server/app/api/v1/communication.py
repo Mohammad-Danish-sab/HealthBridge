@@ -20,12 +20,11 @@ router = APIRouter(prefix="/communication", tags=["Communication & Realtime"])
 async def get_ws_user(token: str) -> Optional[User]:
     try:
         payload = jwt.decode(token, settings.SECRET_KEY, algorithms=[ALGORITHM])
-        email: str = payload.get("sub")
-        if not email:
+        user_id = payload.get("sub")
+        if not user_id:
             return None
         async with AsyncSessionLocal() as db:
-            result = await db.execute(select(User).where(User.email == email))
-            return result.scalars().first()
+            return await db.get(User, int(user_id))
     except JWTError:
         return None
 

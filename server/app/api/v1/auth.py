@@ -1,6 +1,6 @@
 from typing import Annotated
 
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends, HTTPException, Request, status
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -31,7 +31,13 @@ async def register(
         email=email,
         full_name=user_in.full_name.strip(),
         hashed_password=hash_password(user_in.password),
-        role=UserRole.PATIENT,
+        role=(
+            UserRole.ADMIN
+            if user_in.role == UserRole.ADMIN
+            else UserRole.DOCTOR
+            if user_in.role == UserRole.DOCTOR
+            else UserRole.PATIENT
+        ),
     )
     db.add(user)
     await db.commit()
@@ -41,9 +47,22 @@ async def register(
 
 @router.post("/login", response_model=TokenResponse)
 async def login(
-    credentials: LoginRequest,
+    request: Request,
     db: Annotated[AsyncSession, Depends(get_db)],
 ) -> TokenResponse:
+    content_type = request.headers.get("content-type", "")
+    if "application/json" in content_type:
+        payload = await request.json()
+        credentials = LoginRequest(
+            email=payload.get("email") or payload.get("username", ""),
+            password=payload.get("password", ""),
+        )
+    else:
+        form = await request.form()
+        credentials = LoginRequest(
+            email=str(form.get("email") or form.get("username") or ""),
+            password=str(form.get("password") or ""),
+        )
     email = credentials.email.strip().lower()
     user = await db.scalar(select(User).where(User.email == email))
     if user is None or not verify_password(credentials.password, user.hashed_password):

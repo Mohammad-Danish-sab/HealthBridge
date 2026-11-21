@@ -27,7 +27,15 @@ async def get_available_slots(db: AsyncSession, doctor_id: int, target_date: dat
     )
     availabilities = avail_result.scalars().all()
     if not availabilities:
-        return []
+        availabilities = [
+            DoctorAvailability(
+                doctor_id=doctor_id,
+                day_of_week=day_enum,
+                start_time=time(9, 0),
+                end_time=time(17, 0),
+                slot_duration_minutes=30,
+            )
+        ]
 
     # Get existing booked appointments for target date
     appt_result = await db.execute(
