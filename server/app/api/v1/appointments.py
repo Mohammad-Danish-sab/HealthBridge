@@ -154,5 +154,12 @@ async def update_appointment_status(
         appointment.cancellation_reason = status_in.cancellation_reason
 
     await db.commit()
-    await db.refresh(appointment)
-    return appointment
+    result = await db.execute(
+        select(Appointment)
+        .options(
+            selectinload(Appointment.patient),
+            selectinload(Appointment.doctor).selectinload(DoctorProfile.user),
+        )
+        .where(Appointment.id == appointment.id)
+    )
+    return result.scalars().first()

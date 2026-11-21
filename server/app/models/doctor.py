@@ -32,6 +32,10 @@ class DoctorProfile(Base):
     consultation_fee: Mapped[float] = mapped_column(Float, default=0, nullable=False)
     is_approved: Mapped[bool] = mapped_column(Boolean, default=False, nullable=False)
 
+    @property
+    def is_verified(self) -> bool:
+        return self.is_approved
+
     user: Mapped["User"] = relationship("User", back_populates="doctor_profile")
     availabilities: Mapped[list["DoctorAvailability"]] = relationship(
         "DoctorAvailability",

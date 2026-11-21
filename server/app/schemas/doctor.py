@@ -26,6 +26,7 @@ class DoctorProfileResponse(BaseModel):
     bio: str | None
     consultation_fee: float
     is_approved: bool
+    is_verified: bool
     user: UserResponse
 
 
