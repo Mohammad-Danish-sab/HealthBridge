@@ -1,7 +1,7 @@
 from pathlib import Path
 
 from pydantic_settings import BaseSettings, SettingsConfigDict
-from sqlalchemy.engine import URL
+from sqlalchemy.engine import URL, make_url
 
 
 SERVER_ROOT = Path(__file__).resolve().parents[2]
@@ -13,12 +13,12 @@ class Settings(BaseSettings):
     SECRET_KEY: str = "CHANGE_THIS_IN_PRODUCTION_SECRET_KEY_MIN_32_CHARS"
     ACCESS_TOKEN_EXPIRE_MINUTES: int = 60 * 24 * 8
 
-    POSTGRES_SERVER: str = "localhost"
+    POSTGRES_SERVER: str | None = None
     POSTGRES_USER: str = "postgres"
     POSTGRES_PASSWORD: str = ""
     POSTGRES_DB: str = "healthbridge"
     POSTGRES_PORT: int = 5432
-    DATABASE_URL: str = "sqlite+aiosqlite:///healthbridge.db"
+    DATABASE_URL: str | None = None
 
     BACKEND_CORS_ORIGINS: list[str] = [
         "http://localhost:5173",
@@ -37,16 +37,33 @@ class Settings(BaseSettings):
 
     @property
     def database_url(self) -> URL:
-        if self.DATABASE_URL.startswith("sqlite"):
-            database = str(SERVER_ROOT / "healthbridge.db")
-            return URL.create(drivername="sqlite+aiosqlite", database=database)
+        if self.DATABASE_URL:
+            url = make_url(self.DATABASE_URL)
+            if url.drivername == "postgresql":
+                url = url.set(drivername="postgresql+asyncpg")
+            elif url.drivername == "sqlite":
+                url = url.set(drivername="sqlite+aiosqlite")
+
+            if url.get_backend_name() == "sqlite" and url.database not in (None, ":memory:"):
+                database = Path(url.database)
+                if not database.is_absolute():
+                    database = SERVER_ROOT / database
+                url = url.set(database=str(database.resolve()))
+            return url
+
+        if self.POSTGRES_SERVER:
+            return URL.create(
+                drivername="postgresql+asyncpg",
+                username=self.POSTGRES_USER,
+                password=self.POSTGRES_PASSWORD,
+                host=self.POSTGRES_SERVER,
+                port=self.POSTGRES_PORT,
+                database=self.POSTGRES_DB,
+            )
+
         return URL.create(
-            drivername="postgresql+asyncpg",
-            username=self.POSTGRES_USER,
-            password=self.POSTGRES_PASSWORD,
-            host=self.POSTGRES_SERVER,
-            port=self.POSTGRES_PORT,
-            database=self.POSTGRES_DB,
+            drivername="sqlite+aiosqlite",
+            database=str(SERVER_ROOT / "healthbridge.db"),
         )
 
 

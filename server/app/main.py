@@ -3,15 +3,15 @@ from fastapi.middleware.cors import CORSMiddleware
 from contextlib import asynccontextmanager
 from app.core.config import settings
 from app.api.v1 import auth, doctors, appointments, records, pharmacy, admin, communication, ai
-from app.db.base import Base
 from app.db.session import engine
 
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    async with engine.begin() as connection:
-        await connection.run_sync(Base.metadata.create_all)
-    yield
+    try:
+        yield
+    finally:
+        await engine.dispose()
 
 
 app = FastAPI(

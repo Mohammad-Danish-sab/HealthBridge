@@ -1,7 +1,7 @@
 from datetime import datetime
 from sqlalchemy import Column, String, Integer, ForeignKey, DateTime, Boolean, Text
 from sqlalchemy.orm import relationship
-from app.db.session import Base
+from app.models.user import Base
 from app.core.time import utc_now
 
 class Conversation(Base):

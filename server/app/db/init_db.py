@@ -1,12 +1,13 @@
-import asyncio
-from app.db.session import engine
-from app.db.base import Base
+from pathlib import Path
 
-async def init_db():
-    async with engine.begin() as conn:
-        print("Creating PostgreSQL tables for HealthBridge...")
-        await conn.run_sync(Base.metadata.create_all)
-        print("Database tables created successfully.")
+from alembic import command
+from alembic.config import Config
+
+
+def init_db() -> None:
+    config_path = Path(__file__).resolve().parents[2] / "alembic.ini"
+    command.upgrade(Config(str(config_path)), "head")
+
 
 if __name__ == "__main__":
-    asyncio.run(init_db())
+    init_db()

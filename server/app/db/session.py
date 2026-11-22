@@ -6,7 +6,10 @@ from app.core.config import settings
 from app.models.user import Base
 
 
-engine = create_async_engine(settings.database_url, pool_pre_ping=True)
+engine = create_async_engine(
+    settings.database_url,
+    pool_pre_ping=settings.database_url.get_backend_name() != "sqlite",
+)
 SessionLocal = async_sessionmaker(engine, expire_on_commit=False)
 AsyncSessionLocal = SessionLocal
 

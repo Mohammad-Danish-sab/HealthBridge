@@ -2,6 +2,7 @@ fastapi
 uvicorn[standard]
 pydantic-settings
 SQLAlchemy[asyncio]
+alembic
 asyncpg
 python-jose[cryptography]
 passlib[bcrypt]
