@@ -6,9 +6,7 @@ import { recordService } from "../services/recordService";
 import { pharmacyService } from "../services/pharmacyService";
 import {
   Calendar,
-  Stethoscope,
   Pill,
-  Activity,
   ShoppingBag,
   ArrowRight,
   PlusCircle,
@@ -162,7 +160,7 @@ const PatientDashboard = () => {
               Orders
             </h3>
             <Link
-              to="/orders"
+              to="/pharmacy"
               className="text-xs font-semibold text-indigo-600 hover:underline flex items-center gap-1"
             >
               View All <ArrowRight className="h-3 w-3" />

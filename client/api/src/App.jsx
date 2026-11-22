@@ -8,6 +8,7 @@ import {
 import { AuthProvider, useAuth } from "./context/AuthContext";
 import { ProtectedRoute } from "./components/ProtectedRoute";
 import { Navbar } from "./components/Navbar";
+import "./App.css";
 
 // Auth & Shared Pages
 import Login from "./pages/Login";
@@ -47,9 +48,9 @@ function App() {
   return (
     <AuthProvider>
       <Router>
-        <div className="min-h-screen bg-gray-50 flex flex-col">
+        <div className="app-shell flex flex-col">
           <Navbar />
-          <main className="flex-1">
+          <main className="flex-1 page-enter">
             <Routes>
               {/* Public Routes */}
               <Route path="/" element={<RootRedirect />} />

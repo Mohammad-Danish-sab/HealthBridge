@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useCallback } from "react";
 import { recordService } from "../services/recordService";
 import { useAuth } from "../context/AuthContext";
 import { FileText, Pill, Activity, Calendar, Download } from "lucide-react";
@@ -10,13 +10,8 @@ const MedicalRecords = () => {
   const [activeTab, setActiveTab] = useState("prescriptions");
   const [loading, setLoading] = useState(true);
 
-  useEffect(() => {
-    if (user) {
-      fetchRecords();
-    }
-  }, [user]);
-
-  const fetchRecords = async () => {
+  const fetchRecords = useCallback(async () => {
+    if (!user) return;
     setLoading(true);
     try {
       const [rxData, labData] = await Promise.all([
@@ -30,7 +25,11 @@ const MedicalRecords = () => {
     } finally {
       setLoading(false);
     }
-  };
+  }, [user]);
+
+  useEffect(() => {
+    fetchRecords();
+  }, [fetchRecords]);
 
   return (
     <div className="min-h-screen bg-gray-50 py-8 px-4 sm:px-6 lg:px-8">
