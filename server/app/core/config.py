@@ -20,7 +20,10 @@ class Settings(BaseSettings):
     POSTGRES_PORT: int = 5432
     DATABASE_URL: str = "sqlite+aiosqlite:///healthbridge.db"
 
-    BACKEND_CORS_ORIGINS: list[str] = []
+    BACKEND_CORS_ORIGINS: list[str] = [
+        "http://localhost:5173",
+        "http://127.0.0.1:5173",
+    ]
     AI_PROVIDER_API_KEY: str | None = None
     AI_MODEL_NAME: str = "gpt-4o-mini"
     AI_MAX_TOKENS: int = 500

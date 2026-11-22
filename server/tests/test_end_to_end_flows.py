@@ -1,5 +1,21 @@
 import pytest
 
+
+@pytest.mark.asyncio
+async def test_registration_allows_local_vite_origin(client):
+    response = await client.options(
+        "/api/v1/auth/register",
+        headers={
+            "Origin": "http://localhost:5173",
+            "Access-Control-Request-Method": "POST",
+            "Access-Control-Request-Headers": "content-type",
+        },
+    )
+
+    assert response.status_code == 200
+    assert response.headers["access-control-allow-origin"] == "http://localhost:5173"
+
+
 @pytest.mark.asyncio
 async def test_core_healthcare_workflow(client):
     # 1. Register Patient, Doctor, and Admin
