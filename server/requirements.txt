@@ -1,9 +1,10 @@
 fastapi
 uvicorn[standard]
 pydantic-settings
-SQLAlchemy
+SQLAlchemy[asyncio]
 asyncpg
 python-jose[cryptography]
+passlib[bcrypt]
 openai
 python-multipart
 aiosqlite
