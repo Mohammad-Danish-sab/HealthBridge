@@ -1,6 +1,6 @@
 from typing import Optional, List
 from datetime import date, datetime
-from pydantic import BaseModel
+from pydantic import BaseModel, ConfigDict
 from app.schemas.user import UserResponse
 from app.schemas.doctor import DoctorProfileResponse
 
@@ -15,10 +15,9 @@ class PrescriptionItemCreate(PrescriptionItemBase):
     pass
 
 class PrescriptionItemResponse(PrescriptionItemBase):
-    id: int
+    model_config = ConfigDict(from_attributes=True)
 
-    class Config:
-        from_attributes = True
+    id: int
 
 class PrescriptionCreate(BaseModel):
     appointment_id: int
@@ -27,6 +26,8 @@ class PrescriptionCreate(BaseModel):
     items: List[PrescriptionItemCreate]
 
 class PrescriptionResponse(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
     id: int
     appointment_id: int
     patient_id: int
@@ -37,8 +38,6 @@ class PrescriptionResponse(BaseModel):
     items: List[PrescriptionItemResponse]
     doctor: DoctorProfileResponse
 
-    class Config:
-        from_attributes = True
 
 class LabReportCreate(BaseModel):
     patient_id: int
@@ -48,6 +47,8 @@ class LabReportCreate(BaseModel):
     test_date: date
 
 class LabReportResponse(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
     id: int
     patient_id: int
     doctor_id: Optional[int] = None
@@ -56,6 +57,3 @@ class LabReportResponse(BaseModel):
     summary: Optional[str] = None
     test_date: date
     created_at: datetime
-
-    class Config:
-        from_attributes = True

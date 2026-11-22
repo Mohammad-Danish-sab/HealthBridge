@@ -1,6 +1,6 @@
 from typing import Optional
 from datetime import date, time, datetime
-from pydantic import BaseModel
+from pydantic import BaseModel, ConfigDict
 from app.models.appointment import AppointmentStatus
 from app.schemas.user import UserResponse
 from app.schemas.doctor import DoctorProfileResponse
@@ -22,6 +22,8 @@ class TimeSlot(BaseModel):
     is_available: bool
 
 class AppointmentResponse(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
     id: int
     patient_id: int
     doctor_id: int
@@ -34,6 +36,3 @@ class AppointmentResponse(BaseModel):
     created_at: datetime
     patient: UserResponse
     doctor: DoctorProfileResponse
-
-    class Config:
-        from_attributes = True

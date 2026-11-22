@@ -30,7 +30,7 @@ async def get_platform_stats(
         select(func.count(User.id)).where(User.role == UserRole.DOCTOR)
     )
     verified_doctors_count = await db.scalar(
-        select(func.count(DoctorProfile.id)).where(DoctorProfile.is_approved == True)
+        select(func.count(DoctorProfile.id)).where(DoctorProfile.is_approved.is_(True))
     )
     appointments_count = await db.scalar(select(func.count(Appointment.id)))
     orders_count = await db.scalar(select(func.count(Order.id)))

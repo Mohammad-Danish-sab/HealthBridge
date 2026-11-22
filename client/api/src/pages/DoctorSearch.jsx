@@ -6,7 +6,13 @@ import { appointmentService } from "../services/appointmentService";
 const tomorrow = () => {
   const date = new Date();
   date.setDate(date.getDate() + 1);
-  return date.toISOString().slice(0, 10);
+  return date;
+};
+
+const formatDate = (date) => {
+  const month = String(date.getMonth() + 1).padStart(2, "0");
+  const day = String(date.getDate()).padStart(2, "0");
+  return `${date.getFullYear()}-${month}-${day}`;
 };
 
 export default function DoctorSearch() {
@@ -14,6 +20,7 @@ export default function DoctorSearch() {
   const [specialization, setSpecialization] = useState("");
   const [message, setMessage] = useState("");
   const [loading, setLoading] = useState(true);
+  const [bookingId, setBookingId] = useState(null);
 
   const load = useCallback(async (query = "") => {
     setLoading(true);
@@ -30,17 +37,34 @@ export default function DoctorSearch() {
 
   const book = async (doctorId) => {
     setMessage("");
+    setBookingId(doctorId);
     try {
+      const date = tomorrow();
+      let slot = null;
+      let appointmentDate = null;
+      for (let offset = 0; offset < 14 && !slot; offset += 1) {
+        const targetDate = new Date(date);
+        targetDate.setDate(date.getDate() + offset);
+        const slots = await appointmentService.getAvailableSlots(doctorId, formatDate(targetDate));
+        slot = slots.find((item) => item.is_available);
+        appointmentDate = slot ? formatDate(targetDate) : null;
+      }
+      if (!slot || !appointmentDate) {
+        setMessage("This clinician has no open appointments in the next 14 days.");
+        return;
+      }
       await appointmentService.bookAppointment({
         doctor_id: doctorId,
-        appointment_date: tomorrow(),
-        start_time: "09:00:00",
-        end_time: "09:30:00",
+        appointment_date: appointmentDate,
+        start_time: slot.start_time,
+        end_time: slot.end_time,
         reason: "General consultation",
       });
-      setMessage("Your consultation request was sent.");
+      setMessage(`Your consultation request for ${appointmentDate} was sent.`);
     } catch (err) {
       setMessage(err.response?.data?.detail || "Unable to book an appointment.");
+    } finally {
+      setBookingId(null);
     }
   };
 
@@ -67,7 +91,7 @@ export default function DoctorSearch() {
             <h2 className="mt-5 text-lg font-extrabold text-slate-900">Dr. {doctor.user.full_name}</h2>
             <p className="mt-1 text-sm font-semibold text-indigo-600">{doctor.specialization}</p>
             <p className="mt-4 text-sm text-slate-500">{doctor.experience_years} years of clinical experience</p>
-            <button onClick={() => book(doctor.id)} className="mt-6 inline-flex w-full items-center justify-center gap-2 rounded-xl bg-slate-900 py-3 text-sm font-bold text-white transition hover:bg-indigo-600"><CalendarDays className="h-4 w-4" /> Request consultation</button>
+            <button onClick={() => book(doctor.id)} disabled={bookingId === doctor.id} className="mt-6 inline-flex w-full items-center justify-center gap-2 rounded-xl bg-slate-900 py-3 text-sm font-bold text-white transition hover:bg-indigo-600 disabled:cursor-not-allowed disabled:opacity-60"><CalendarDays className="h-4 w-4" /> {bookingId === doctor.id ? "Checking availability..." : "Request consultation"}</button>
           </article>
         ))}
       </div>

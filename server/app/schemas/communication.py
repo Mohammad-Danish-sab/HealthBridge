@@ -1,6 +1,6 @@
 from typing import Optional
 from datetime import datetime
-from pydantic import BaseModel
+from pydantic import BaseModel, ConfigDict
 from app.schemas.user import UserResponse
 
 class ChatMessageCreate(BaseModel):
@@ -9,6 +9,8 @@ class ChatMessageCreate(BaseModel):
     content: str
 
 class ChatMessageResponse(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
     id: int
     sender_id: int
     recipient_id: int
@@ -18,10 +20,10 @@ class ChatMessageResponse(BaseModel):
     timestamp: datetime
     sender: UserResponse
 
-    class Config:
-        from_attributes = True
 
 class NotificationResponse(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
     id: int
     user_id: int
     title: str
@@ -29,6 +31,3 @@ class NotificationResponse(BaseModel):
     is_read: bool
     link: Optional[str] = None
     created_at: datetime
-
-    class Config:
-        from_attributes = True

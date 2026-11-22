@@ -1,7 +1,6 @@
 import React, { useState, useEffect } from "react";
 import { adminService } from "../../services/adminService";
-import { doctorService } from "../../services/doctorService";
-import { Users, ShieldAlert, CheckCircle, ShieldCheck } from "lucide-react";
+import { Users, ShieldAlert, CheckCircle } from "lucide-react";
 
 const AdminUsers = () => {
   const [users, setUsers] = useState([]);
@@ -29,16 +28,6 @@ const AdminUsers = () => {
       fetchUsers();
     } catch (err) {
       console.error("Failed to toggle user status:", err);
-    }
-  };
-
-  const handleVerifyDoctor = async (doctorId) => {
-    try {
-      await doctorService.verifyDoctor(doctorId);
-      alert("Doctor verified successfully!");
-      fetchUsers();
-    } catch (err) {
-      console.error("Failed to verify doctor:", err);
     }
   };
 

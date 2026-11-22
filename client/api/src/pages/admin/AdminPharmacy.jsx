@@ -1,10 +1,9 @@
 import React, { useState, useEffect } from "react";
 import { pharmacyService } from "../../services/pharmacyService";
-import { ShoppingBag, Plus, CheckCircle } from "lucide-react";
+import { ShoppingBag, Plus } from "lucide-react";
 
 const AdminPharmacy = () => {
   const [medicines, setMedicines] = useState([]);
-  const [loading, setLoading] = useState(true);
   const [form, setForm] = useState({
     name: "",
     manufacturer: "",
@@ -21,7 +20,6 @@ const AdminPharmacy = () => {
     } catch (err) {
       console.error("Failed to load medicines:", err);
     } finally {
-      setLoading(false);
     }
   };
 

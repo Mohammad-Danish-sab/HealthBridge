@@ -8,7 +8,6 @@ passlib[bcrypt]
 openai
 python-multipart
 aiosqlite
-asyncpg
 httpx
 pytest
 pytest-asyncio

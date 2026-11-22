@@ -3,6 +3,7 @@ from datetime import datetime, date, time
 from sqlalchemy import Column, String, Integer, Float, ForeignKey, Date, Time, Enum, DateTime, Text
 from sqlalchemy.orm import relationship
 from app.models.user import Base
+from app.core.time import utc_now
 
 class AppointmentStatus(str, enum.Enum):
     PENDING = "PENDING"
@@ -22,8 +23,8 @@ class Appointment(Base):
     status = Column(Enum(AppointmentStatus), default=AppointmentStatus.PENDING, nullable=False, index=True)
     reason = Column(Text, nullable=True)
     cancellation_reason = Column(Text, nullable=True)
-    created_at = Column(DateTime, default=datetime.utcnow, nullable=False)
-    updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow, nullable=False)
+    created_at = Column(DateTime(timezone=True), default=utc_now, nullable=False)
+    updated_at = Column(DateTime(timezone=True), default=utc_now, onupdate=utc_now, nullable=False)
 
     patient = relationship("User", foreign_keys=[patient_id], backref="patient_appointments")
     doctor = relationship("DoctorProfile", foreign_keys=[doctor_id], backref="doctor_appointments")

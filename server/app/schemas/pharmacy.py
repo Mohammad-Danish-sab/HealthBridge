@@ -1,6 +1,6 @@
 from typing import Optional, List
 from datetime import datetime
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, ConfigDict, Field
 from app.models.pharmacy import OrderStatus
 from app.schemas.user import UserResponse
 
@@ -16,26 +16,26 @@ class MedicineCreate(MedicineBase):
     pass
 
 class MedicineResponse(MedicineBase):
+    model_config = ConfigDict(from_attributes=True)
+
     id: int
     is_active: bool
     created_at: datetime
 
-    class Config:
-        from_attributes = True
 
 class OrderItemCreate(BaseModel):
     medicine_id: int
     quantity: int = Field(..., gt=0)
 
 class OrderItemResponse(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
     id: int
     medicine_id: int
     quantity: int
     unit_price: float
     medicine: MedicineResponse
 
-    class Config:
-        from_attributes = True
 
 class OrderCreate(BaseModel):
     prescription_id: Optional[int] = None
@@ -46,6 +46,8 @@ class OrderStatusUpdate(BaseModel):
     status: OrderStatus
 
 class OrderResponse(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
     id: int
     patient_id: int
     prescription_id: Optional[int] = None
@@ -56,8 +58,6 @@ class OrderResponse(BaseModel):
     patient: UserResponse
     items: List[OrderItemResponse]
 
-    class Config:
-        from_attributes = True
 
 class PlatformStats(BaseModel):
     total_patients: int

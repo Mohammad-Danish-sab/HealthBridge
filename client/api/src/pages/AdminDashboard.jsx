@@ -1,6 +1,5 @@
 import React, { useState, useEffect } from "react";
 import { adminService } from "../services/adminService";
-import { doctorService } from "../services/doctorService";
 import {
   Users,
   Stethoscope,
@@ -14,10 +13,6 @@ const AdminDashboard = () => {
   const [stats, setStats] = useState(null);
   const [users, setUsers] = useState([]);
   const [loading, setLoading] = useState(true);
-
-  useEffect(() => {
-    fetchAdminData();
-  }, []);
 
   const fetchAdminData = async () => {
     setLoading(true);
@@ -34,6 +29,10 @@ const AdminDashboard = () => {
       setLoading(false);
     }
   };
+
+  useEffect(() => {
+    fetchAdminData();
+  }, []);
 
   const handleToggleUser = async (userId) => {
     try {

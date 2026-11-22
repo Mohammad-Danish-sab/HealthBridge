@@ -3,6 +3,7 @@ from datetime import datetime
 from sqlalchemy import Column, String, Integer, Float, ForeignKey, DateTime, Enum, Text, Boolean
 from sqlalchemy.orm import relationship
 from app.db.session import Base
+from app.core.time import utc_now
 
 class OrderStatus(str, enum.Enum):
     PLACED = "PLACED"
@@ -25,7 +26,7 @@ class Pharmacy(Base):
     address = Column(String, nullable=False)
     phone_number = Column(String, nullable=True)
     is_active = Column(Boolean, default=True, nullable=False)
-    created_at = Column(DateTime, default=datetime.utcnow, nullable=False)
+    created_at = Column(DateTime(timezone=True), default=utc_now, nullable=False)
 
 class Medicine(Base):
     __tablename__ = "medicines"
@@ -38,7 +39,7 @@ class Medicine(Base):
     stock_quantity = Column(Integer, nullable=False, default=0)
     requires_prescription = Column(Boolean, default=False, nullable=False)
     is_active = Column(Boolean, default=True, nullable=False)
-    created_at = Column(DateTime, default=datetime.utcnow, nullable=False)
+    created_at = Column(DateTime(timezone=True), default=utc_now, nullable=False)
 
 class Order(Base):
     __tablename__ = "orders"
@@ -49,8 +50,8 @@ class Order(Base):
     total_amount = Column(Float, nullable=False)
     shipping_address = Column(Text, nullable=False)
     status = Column(Enum(OrderStatus), default=OrderStatus.PLACED, nullable=False, index=True)
-    created_at = Column(DateTime, default=datetime.utcnow, nullable=False)
-    updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow, nullable=False)
+    created_at = Column(DateTime(timezone=True), default=utc_now, nullable=False)
+    updated_at = Column(DateTime(timezone=True), default=utc_now, onupdate=utc_now, nullable=False)
 
     patient = relationship("User", backref="orders")
     items = relationship("OrderItem", back_populates="order", cascade="all, delete-orphan")
@@ -76,7 +77,7 @@ class Complaint(Base):
     description = Column(Text, nullable=False)
     status = Column(Enum(ComplaintStatus), default=ComplaintStatus.OPEN, nullable=False)
     resolution_notes = Column(Text, nullable=True)
-    created_at = Column(DateTime, default=datetime.utcnow, nullable=False)
+    created_at = Column(DateTime(timezone=True), default=utc_now, nullable=False)
 
     user = relationship("User", backref="complaints")
 
@@ -89,4 +90,4 @@ class AuditLog(Base):
     entity_type = Column(String, nullable=False)
     entity_id = Column(Integer, nullable=True)
     details = Column(Text, nullable=True)
-    timestamp = Column(DateTime, default=datetime.utcnow, nullable=False)
+    timestamp = Column(DateTime(timezone=True), default=utc_now, nullable=False)

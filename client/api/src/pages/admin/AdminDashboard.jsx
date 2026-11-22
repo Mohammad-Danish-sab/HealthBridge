@@ -5,9 +5,6 @@ import {
   Stethoscope,
   ShoppingBag,
   DollarSign,
-  Calendar,
-  ShieldCheck,
-  Activity,
 } from "lucide-react";
 
 const AdminDashboard = () => {

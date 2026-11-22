@@ -14,7 +14,7 @@ export const AuthProvider = ({ children }) => {
         try {
           const response = await api.get("/auth/me");
           setUser(response.data);
-        } catch (error) {
+        } catch {
           localStorage.removeItem("hb_access_token");
           localStorage.removeItem("hb_user_role");
           setUser(null);

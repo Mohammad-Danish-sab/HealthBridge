@@ -6,10 +6,7 @@ import {
   Calendar,
   Users,
   Clock,
-  CheckCircle,
   ArrowRight,
-  FileText,
-  PlusCircle,
 } from "lucide-react";
 
 const DoctorDashboard = () => {
@@ -39,7 +36,8 @@ const DoctorDashboard = () => {
     );
   }
 
-  const todayStr = new Date().toISOString().split("T")[0];
+  const today = new Date();
+  const todayStr = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, "0")}-${String(today.getDate()).padStart(2, "0")}`;
   const todaysAppointments = appointments.filter(
     (a) => a.appointment_date === todayStr,
   );

@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from "react";
 import { appointmentService } from "../../services/appointmentService";
-import { Calendar, Clock, CheckCircle, XCircle, FileText } from "lucide-react";
+import { Calendar, Clock, FileText } from "lucide-react";
 import { Link } from "react-router-dom";
 
 const DoctorAppointments = () => {

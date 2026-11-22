@@ -3,6 +3,7 @@ from datetime import datetime, date
 from sqlalchemy import Column, String, Integer, Float, ForeignKey, Date, DateTime, Text, Enum
 from sqlalchemy.orm import relationship
 from app.models.user import Base
+from app.core.time import utc_now
 
 class Prescription(Base):
     __tablename__ = "prescriptions"
@@ -13,7 +14,7 @@ class Prescription(Base):
     doctor_id = Column(Integer, ForeignKey("doctor_profiles.id", ondelete="CASCADE"), nullable=False)
     diagnosis = Column(Text, nullable=False)
     notes = Column(Text, nullable=True)
-    created_at = Column(DateTime, default=datetime.utcnow, nullable=False)
+    created_at = Column(DateTime(timezone=True), default=utc_now, nullable=False)
 
     appointment = relationship("Appointment", backref="prescription")
     patient = relationship("User", foreign_keys=[patient_id], backref="patient_prescriptions")
@@ -43,7 +44,7 @@ class LabReport(Base):
     report_url = Column(String, nullable=False)      
     summary = Column(Text, nullable=True)
     test_date = Column(Date, nullable=False, default=date.today)
-    created_at = Column(DateTime, default=datetime.utcnow, nullable=False)
+    created_at = Column(DateTime(timezone=True), default=utc_now, nullable=False)
 
     patient = relationship("User", foreign_keys=[patient_id], backref="patient_lab_reports")
     doctor = relationship("DoctorProfile", foreign_keys=[doctor_id], backref="doctor_lab_reports")

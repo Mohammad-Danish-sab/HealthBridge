@@ -17,6 +17,7 @@ import Notifications from "./pages/Notifications";
 
 // Patient Pages
 import PatientDashboard from "./pages/PatientDashboard";
+import PatientAppointments from "./pages/PatientAppointments";
 import DoctorSearch from "./pages/DoctorSearch";
 import MedicalRecords from "./pages/MedicalRecords";
 import PharmacyCatalog from "./pages/PharmacyCatalog";
@@ -85,7 +86,7 @@ function App() {
               <Route element={<ProtectedRoute allowedRoles={["PATIENT"]} />}>
                 <Route path="/dashboard" element={<PatientDashboard />} />
                 <Route path="/doctors" element={<DoctorSearch />} />
-                <Route path="/appointments" element={<PatientDashboard />} />
+                <Route path="/appointments" element={<PatientAppointments />} />
                 <Route path="/medical-records" element={<MedicalRecords />} />
                 <Route path="/prescriptions" element={<MedicalRecords />} />
                 <Route path="/pharmacy" element={<PharmacyCatalog />} />

@@ -3,11 +3,8 @@ import { useParams, Link } from "react-router-dom";
 import { recordService } from "../../services/recordService";
 import { appointmentService } from "../../services/appointmentService";
 import {
-  User,
-  FileText,
   Pill,
   Activity,
-  Calendar,
   ArrowLeft,
   Download,
 } from "lucide-react";
