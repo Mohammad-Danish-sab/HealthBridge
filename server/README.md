@@ -39,4 +39,7 @@ Review generated migrations before applying them. To revert one revision, run
 also applies migrations up to the latest revision.
 
 The API does not create or alter tables at startup. Apply migrations before
-starting the service.
+starting the service. For a database that already has the complete schema
+created by an older HealthBridge version, back it up and verify the schema
+before marking it as migrated with `alembic stamp head`; do not run the initial
+migration against existing tables.

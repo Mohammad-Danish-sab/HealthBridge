@@ -31,3 +31,18 @@ def test_postgres_settings_build_async_database_url():
 
     assert settings.database_url.drivername == "postgresql+asyncpg"
     assert settings.database_url.host == "db"
+
+
+def test_postgres_db_url_setting_uses_async_driver():
+    settings = Settings(
+        POSTGRES_DB="postgresql://user:password@db.example.com/healthbridge?"
+        "sslmode=require&channel_binding=require",
+        _env_file=None,
+    )
+
+    url = settings.database_url
+    assert url.drivername == "postgresql+asyncpg"
+    assert url.host == "db.example.com"
+    assert url.database == "healthbridge"
+    assert url.query["ssl"] == "require"
+    assert "sslmode" not in url.query

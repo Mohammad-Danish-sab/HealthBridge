@@ -39,17 +39,10 @@ class Settings(BaseSettings):
     def database_url(self) -> URL:
         if self.DATABASE_URL:
             url = make_url(self.DATABASE_URL)
-            if url.drivername == "postgresql":
-                url = url.set(drivername="postgresql+asyncpg")
-            elif url.drivername == "sqlite":
-                url = url.set(drivername="sqlite+aiosqlite")
+            return self._normalize_database_url(url)
 
-            if url.get_backend_name() == "sqlite" and url.database not in (None, ":memory:"):
-                database = Path(url.database)
-                if not database.is_absolute():
-                    database = SERVER_ROOT / database
-                url = url.set(database=str(database.resolve()))
-            return url
+        if self.POSTGRES_DB.lower().startswith(("postgresql://", "postgres://")):
+            return self._normalize_database_url(make_url(self.POSTGRES_DB))
 
         if self.POSTGRES_SERVER:
             return URL.create(
@@ -65,6 +58,25 @@ class Settings(BaseSettings):
             drivername="sqlite+aiosqlite",
             database=str(SERVER_ROOT / "healthbridge.db"),
         )
+
+    def _normalize_database_url(self, url: URL) -> URL:
+        if url.drivername in ("postgresql", "postgres"):
+            url = url.set(drivername="postgresql+asyncpg")
+            query = dict(url.query)
+            sslmode = query.pop("sslmode", None)
+            query.pop("channel_binding", None)
+            if sslmode:
+                query.setdefault("ssl", sslmode)
+            url = url.set(query=query)
+        elif url.drivername == "sqlite":
+            url = url.set(drivername="sqlite+aiosqlite")
+
+        if url.get_backend_name() == "sqlite" and url.database not in (None, ":memory:"):
+            database = Path(url.database)
+            if not database.is_absolute():
+                database = SERVER_ROOT / database
+            url = url.set(database=str(database.resolve()))
+        return url
 
 
 settings = Settings()
