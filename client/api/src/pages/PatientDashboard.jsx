@@ -1,15 +1,17 @@
-import React, { useState, useEffect } from "react";
+import React, { useCallback, useState, useEffect } from "react";
 import { Link } from "react-router-dom";
 import { useAuth } from "../context/AuthContext";
 import { appointmentService } from "../services/appointmentService";
 import { recordService } from "../services/recordService";
 import { pharmacyService } from "../services/pharmacyService";
 import {
+  AlertCircle,
   Calendar,
   Pill,
   ShoppingBag,
   ArrowRight,
   PlusCircle,
+  RotateCw,
 } from "lucide-react";
 
 const PatientDashboard = () => {
@@ -18,26 +20,44 @@ const PatientDashboard = () => {
   const [prescriptions, setPrescriptions] = useState([]);
   const [orders, setOrders] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [loadError, setLoadError] = useState("");
+
+  const loadDashboardData = useCallback(async () => {
+    if (!user) return;
+
+    setLoading(true);
+    setLoadError("");
+    const results = await Promise.allSettled([
+      appointmentService.getMyAppointments(),
+      recordService.getPatientPrescriptions(user.id),
+      pharmacyService.getMyOrders(),
+    ]);
+
+    const [appointmentsResult, prescriptionsResult, ordersResult] = results;
+    setAppointments(
+      appointmentsResult.status === "fulfilled" ? appointmentsResult.value : [],
+    );
+    setPrescriptions(
+      prescriptionsResult.status === "fulfilled" ? prescriptionsResult.value : [],
+    );
+    setOrders(ordersResult.status === "fulfilled" ? ordersResult.value : []);
+
+    const failedSections = results.flatMap((result, index) =>
+      result.status === "rejected"
+        ? [["appointments", "prescriptions", "orders"][index]]
+        : [],
+    );
+    if (failedSections.length > 0) {
+      setLoadError(
+        `Some dashboard information could not be loaded: ${failedSections.join(", ")}. You can retry without losing the information that loaded successfully.`,
+      );
+    }
+    setLoading(false);
+  }, [user]);
 
   useEffect(() => {
-    const loadDashboardData = async () => {
-      try {
-        const [apptsData, rxData, ordersData] = await Promise.all([
-          appointmentService.getMyAppointments(),
-          recordService.getPatientPrescriptions(user.id),
-          pharmacyService.getMyOrders(),
-        ]);
-        setAppointments(apptsData);
-        setPrescriptions(rxData);
-        setOrders(ordersData);
-      } catch (err) {
-        console.error("Failed to load dashboard data:", err);
-      } finally {
-        setLoading(false);
-      }
-    };
-    if (user) loadDashboardData();
-  }, [user]);
+    loadDashboardData();
+  }, [loadDashboardData]);
 
   if (loading) {
     return (
@@ -71,6 +91,27 @@ const PatientDashboard = () => {
           <PlusCircle className="h-5 w-5" /> Book Consultation
         </Link>
       </div>
+
+      {loadError && (
+        <div
+          role="alert"
+          className="flex flex-col gap-3 rounded-xl border border-amber-200 bg-amber-50 p-4 text-sm text-amber-900 sm:flex-row sm:items-center sm:justify-between"
+        >
+          <p className="flex items-start gap-2">
+            <AlertCircle className="mt-0.5 h-4 w-4 shrink-0" />
+            {loadError}
+          </p>
+          <button
+            type="button"
+            onClick={loadDashboardData}
+            className="inline-flex shrink-0 items-center justify-center gap-2 rounded-lg border border-amber-300 px-3 py-2 font-semibold transition hover:bg-amber-100 disabled:cursor-not-allowed disabled:opacity-60"
+            disabled={loading}
+          >
+            <RotateCw className={`h-4 w-4 ${loading ? "animate-spin" : ""}`} />
+            Retry
+          </button>
+        </div>
+      )}
 
       {/* Grid Quick Summaries */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
