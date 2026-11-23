@@ -1,19 +1,30 @@
 import React, { useState, useEffect } from "react";
 import { appointmentService } from "../../services/appointmentService";
-import { Calendar, Clock, FileText } from "lucide-react";
+import {
+  AlertCircle,
+  Calendar,
+  CheckCircle2,
+  Clock,
+  FileText,
+  RotateCw,
+} from "lucide-react";
 import { Link } from "react-router-dom";
 
 const DoctorAppointments = () => {
   const [appointments, setAppointments] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [updatingId, setUpdatingId] = useState(null);
+  const [error, setError] = useState("");
+  const [notice, setNotice] = useState("");
 
   const fetchAppointments = async () => {
     setLoading(true);
+    setError("");
     try {
       const data = await appointmentService.getMyAppointments();
       setAppointments(data);
-    } catch (err) {
-      console.error("Failed to load appointments:", err);
+    } catch {
+      setError("Unable to load appointments. Please try again.");
     } finally {
       setLoading(false);
     }
@@ -24,11 +35,30 @@ const DoctorAppointments = () => {
   }, []);
 
   const handleStatusUpdate = async (id, status) => {
+    setUpdatingId(id);
+    setError("");
+    setNotice("");
     try {
-      await appointmentService.updateStatus(id, status);
-      fetchAppointments();
-    } catch (err) {
-      console.error("Failed to update status:", err);
+      const updatedAppointment = await appointmentService.updateStatus(id, status);
+      setAppointments((current) =>
+        current.map((appointment) =>
+          appointment.id === id ? updatedAppointment : appointment,
+        ),
+      );
+      setNotice(
+        status === "CONFIRMED"
+          ? "Appointment accepted."
+          : status === "COMPLETED"
+            ? "Appointment marked as completed."
+            : "Appointment declined.",
+      );
+    } catch (requestError) {
+      setError(
+        requestError.response?.data?.detail ||
+          "Unable to update this appointment. Please try again.",
+      );
+    } finally {
+      setUpdatingId(null);
     }
   };
 
@@ -37,6 +67,35 @@ const DoctorAppointments = () => {
       <h1 className="text-3xl font-black text-gray-900">
         Appointment Management
       </h1>
+
+      {error && (
+        <div
+          role="alert"
+          className="flex flex-col gap-3 rounded-xl border border-rose-200 bg-rose-50 p-4 text-sm text-rose-800 sm:flex-row sm:items-center sm:justify-between"
+        >
+          <p className="flex items-start gap-2">
+            <AlertCircle className="mt-0.5 h-4 w-4 shrink-0" />
+            {error}
+          </p>
+          <button
+            type="button"
+            onClick={fetchAppointments}
+            disabled={loading || updatingId !== null}
+            className="inline-flex shrink-0 items-center justify-center gap-2 rounded-lg border border-rose-300 px-3 py-2 font-semibold transition hover:bg-rose-100 disabled:cursor-not-allowed disabled:opacity-60"
+          >
+            <RotateCw className={`h-4 w-4 ${loading ? "animate-spin" : ""}`} />
+            Retry
+          </button>
+        </div>
+      )}
+      {notice && (
+        <p
+          role="status"
+          className="rounded-xl border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm font-semibold text-emerald-800"
+        >
+          {notice}
+        </p>
+      )}
 
       {loading ? (
         <div className="text-center py-12">
@@ -89,17 +148,24 @@ const DoctorAppointments = () => {
               </div>
 
               <div className="flex items-center gap-3">
+                {updatingId === appt.id && (
+                  <span className="text-sm font-medium text-slate-500">
+                    Updating...
+                  </span>
+                )}
                 {appt.status === "PENDING" && (
                   <>
                     <button
                       onClick={() => handleStatusUpdate(appt.id, "CONFIRMED")}
+                      disabled={updatingId !== null}
                       className="bg-emerald-600 text-white font-semibold px-4 py-2 rounded-xl text-sm hover:bg-emerald-700 transition"
                     >
                       Accept
                     </button>
                     <button
                       onClick={() => handleStatusUpdate(appt.id, "CANCELLED")}
-                      className="bg-red-50 text-red-600 font-semibold px-4 py-2 rounded-xl text-sm hover:bg-red-100 transition"
+                      disabled={updatingId !== null}
+                      className="bg-red-50 text-red-600 font-semibold px-4 py-2 rounded-xl text-sm hover:bg-red-100 transition disabled:cursor-not-allowed disabled:opacity-60"
                     >
                       Reject
                     </button>
@@ -112,6 +178,16 @@ const DoctorAppointments = () => {
                   >
                     <FileText className="h-4 w-4" /> Issue Prescription
                   </Link>
+                )}
+                {appt.status === "CONFIRMED" && (
+                  <button
+                    onClick={() => handleStatusUpdate(appt.id, "COMPLETED")}
+                    disabled={updatingId !== null}
+                    className="inline-flex items-center gap-1.5 rounded-xl border border-emerald-200 px-4 py-2 text-sm font-semibold text-emerald-700 transition hover:bg-emerald-50 disabled:cursor-not-allowed disabled:opacity-60"
+                  >
+                    <CheckCircle2 className="h-4 w-4" />
+                    Mark complete
+                  </button>
                 )}
               </div>
             </div>
