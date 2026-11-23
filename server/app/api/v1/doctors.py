@@ -13,7 +13,7 @@ from app.schemas.doctor import AvailabilityItem, DoctorProfileCreate, DoctorProf
 
 
 router = APIRouter(prefix="/doctors", tags=["Doctors"])
-_doctor_or_admin = RoleChecker([UserRole.DOCTOR, UserRole.ADMIN])
+_doctor_only = RoleChecker([UserRole.DOCTOR])
 _admin_only = RoleChecker([UserRole.ADMIN])
 
 
@@ -49,7 +49,7 @@ async def list_doctors(
 
 @router.get("/me", response_model=DoctorProfileResponse)
 async def read_my_profile(
-    current_user: Annotated[User, Depends(_doctor_or_admin)],
+    current_user: Annotated[User, Depends(_doctor_only)],
     db: Annotated[AsyncSession, Depends(get_db)],
 ) -> DoctorProfile:
     profile = await db.scalar(
@@ -69,7 +69,7 @@ async def read_my_profile(
 )
 async def create_my_profile(
     profile_in: DoctorProfileCreate,
-    current_user: Annotated[User, Depends(_doctor_or_admin)],
+    current_user: Annotated[User, Depends(_doctor_only)],
     db: Annotated[AsyncSession, Depends(get_db)],
 ) -> DoctorProfile:
     existing = await db.scalar(
@@ -96,7 +96,7 @@ async def create_my_profile(
 @router.post("/profile", response_model=DoctorProfileResponse, status_code=status.HTTP_201_CREATED)
 async def create_profile_alias(
     profile_in: DoctorProfileCreate,
-    current_user: Annotated[User, Depends(_doctor_or_admin)],
+    current_user: Annotated[User, Depends(_doctor_only)],
     db: Annotated[AsyncSession, Depends(get_db)],
 ) -> DoctorProfile:
     return await create_my_profile(profile_in, current_user, db)
@@ -124,7 +124,7 @@ async def verify_doctor(
 @router.put("/me/availability", response_model=list[AvailabilityItem])
 async def replace_my_availability(
     items: list[AvailabilityItem],
-    current_user: Annotated[User, Depends(_doctor_or_admin)],
+    current_user: Annotated[User, Depends(_doctor_only)],
     db: Annotated[AsyncSession, Depends(get_db)],
 ) -> list[AvailabilityItem]:
     profile = await db.scalar(
@@ -151,7 +151,7 @@ async def replace_my_availability(
 @router.post("/availability", response_model=list[AvailabilityItem])
 async def replace_availability_alias(
     items: list[AvailabilityItem],
-    current_user: Annotated[User, Depends(_doctor_or_admin)],
+    current_user: Annotated[User, Depends(_doctor_only)],
     db: Annotated[AsyncSession, Depends(get_db)],
 ) -> list[AvailabilityItem]:
     return await replace_my_availability(items, current_user, db)

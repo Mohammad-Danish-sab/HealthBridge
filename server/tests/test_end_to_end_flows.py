@@ -1,4 +1,8 @@
 import pytest
+from sqlalchemy import select
+
+from app.api.deps import hash_password
+from app.models.user import User, UserRole
 
 
 @pytest.mark.asyncio
@@ -17,7 +21,22 @@ async def test_registration_allows_local_vite_origin(client):
 
 
 @pytest.mark.asyncio
-async def test_core_healthcare_workflow(client):
+async def test_public_registration_cannot_create_admin(client, db_session):
+    response = await client.post("/api/v1/auth/register", json={
+        "email": "untrusted-admin@test.com",
+        "password": "Password123!",
+        "full_name": "Untrusted Admin",
+        "role": "ADMIN",
+    })
+
+    assert response.status_code == 403
+    assert await db_session.scalar(
+        select(User).where(User.email == "untrusted-admin@test.com")
+    ) is None
+
+
+@pytest.mark.asyncio
+async def test_core_healthcare_workflow(client, db_session):
     # 1. Register Patient, Doctor, and Admin
     patient_res = await client.post("/api/v1/auth/register", json={
         "email": "patient@test.com",
@@ -37,13 +56,13 @@ async def test_core_healthcare_workflow(client):
     assert doctor_res.status_code == 201
     doctor_user_id = doctor_res.json()["id"]
 
-    admin_res = await client.post("/api/v1/auth/register", json={
-        "email": "admin@test.com",
-        "password": "Password123!",
-        "full_name": "System Admin",
-        "role": "ADMIN"
-    })
-    assert admin_res.status_code == 201
+    db_session.add(User(
+        email="admin@test.com",
+        hashed_password=hash_password("Password123!"),
+        full_name="System Admin",
+        role=UserRole.ADMIN,
+    ))
+    await db_session.commit()
 
     # 2. Authenticate all three roles
     p_token = (await client.post("/api/v1/auth/login", data={"username": "patient@test.com", "password": "Password123!"})).json()["access_token"]
@@ -63,6 +82,14 @@ async def test_core_healthcare_workflow(client):
     })
     assert profile_res.status_code == 201
     doctor_profile_id = profile_res.json()["id"]
+
+    # Admins cannot use doctor self-service endpoints.
+    assert (await client.get("/api/v1/doctors/me", headers=a_headers)).status_code == 403
+    assert (await client.put(
+        "/api/v1/doctors/me/availability",
+        headers=a_headers,
+        json=[],
+    )).status_code == 403
 
     # 4. RBAC Check: Patient cannot verify a doctor
     forbidden_verify = await client.patch(f"/api/v1/doctors/{doctor_profile_id}/verify", headers=p_headers)

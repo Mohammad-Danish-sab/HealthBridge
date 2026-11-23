@@ -22,6 +22,11 @@ async def register(
     email = user_in.email.strip().lower()
     if "@" not in email or email.startswith("@") or email.endswith("@"):
         raise HTTPException(status_code=422, detail="A valid email address is required.")
+    if user_in.role == UserRole.ADMIN:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Admin accounts cannot be created through public registration.",
+        )
 
     existing = await db.scalar(select(User).where(User.email == email))
     if existing is not None:
@@ -31,13 +36,7 @@ async def register(
         email=email,
         full_name=user_in.full_name.strip(),
         hashed_password=hash_password(user_in.password),
-        role=(
-            UserRole.ADMIN
-            if user_in.role == UserRole.ADMIN
-            else UserRole.DOCTOR
-            if user_in.role == UserRole.DOCTOR
-            else UserRole.PATIENT
-        ),
+        role=user_in.role,
     )
     db.add(user)
     await db.commit()
