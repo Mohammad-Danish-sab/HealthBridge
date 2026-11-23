@@ -13,7 +13,7 @@ class ChatMessageResponse(BaseModel):
 
     id: int
     sender_id: int
-    recipient_id: int
+    recipient_id: Optional[int] = None
     appointment_id: Optional[int] = None
     content: str
     is_read: bool

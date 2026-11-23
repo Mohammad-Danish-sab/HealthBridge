@@ -35,6 +35,7 @@ async def test_core_healthcare_workflow(client):
         "role": "DOCTOR"
     })
     assert doctor_res.status_code == 201
+    doctor_user_id = doctor_res.json()["id"]
 
     admin_res = await client.post("/api/v1/auth/register", json={
         "email": "admin@test.com",
@@ -112,3 +113,22 @@ async def test_core_healthcare_workflow(client):
     patient_rx_res = await client.get(f"/api/v1/records/prescriptions/patient/{patient_id}", headers=p_headers)
     assert patient_rx_res.status_code == 200
     assert len(patient_rx_res.json()) == 1
+
+    chat_res = await client.post(
+        "/api/v1/communication/chat/send",
+        headers=p_headers,
+        json={
+            "recipient_id": doctor_user_id,
+            "appointment_id": appointment_id,
+            "content": "Hello doctor, please review my prescription.",
+        },
+    )
+    assert chat_res.status_code == 200
+    assert chat_res.json()["recipient_id"] == doctor_user_id
+
+    history_res = await client.get(
+        f"/api/v1/communication/chat/history/{doctor_user_id}",
+        headers=p_headers,
+    )
+    assert history_res.status_code == 200
+    assert len(history_res.json()) == 1

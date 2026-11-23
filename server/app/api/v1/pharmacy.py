@@ -2,6 +2,7 @@ from typing import List, Optional
 from fastapi import APIRouter, Depends, HTTPException, status, Query
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.future import select
+from sqlalchemy.orm import selectinload
 
 from app.db.session import get_db
 from app.models.user import User, UserRole
@@ -102,7 +103,14 @@ async def place_order(
         db, current_user.id, "PLACE_ORDER", "Order", order.id, f"Order placed for ${total_amount}"
     )
 
-    result = await db.execute(select(Order).where(Order.id == order.id))
+    result = await db.execute(
+        select(Order)
+        .options(
+            selectinload(Order.patient),
+            selectinload(Order.items).selectinload(OrderItem.medicine),
+        )
+        .where(Order.id == order.id)
+    )
     return result.scalars().first()
 
 @router.get("/orders/my-orders", response_model=List[OrderResponse])
@@ -110,7 +118,12 @@ async def get_my_orders(
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_user)
 ):
-    query = select(Order)
+    if current_user.role not in (UserRole.PATIENT, UserRole.ADMIN):
+        raise HTTPException(status_code=403, detail="Insufficient permissions.")
+    query = select(Order).options(
+        selectinload(Order.patient),
+        selectinload(Order.items).selectinload(OrderItem.medicine),
+    )
     if current_user.role == UserRole.PATIENT:
         query = query.where(Order.patient_id == current_user.id)
     
