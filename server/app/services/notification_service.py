@@ -25,8 +25,10 @@ async def create_notification(
             "type": "NOTIFICATION",
             "data": {
                 "id": notification.id,
+                "user_id": user_id,
                 "title": title,
                 "message": message,
+                "is_read": notification.is_read,
                 "link": link,
                 "created_at": notification.created_at.isoformat()
             }

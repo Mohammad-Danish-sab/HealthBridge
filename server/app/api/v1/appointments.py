@@ -16,6 +16,7 @@ from app.schemas.appointment import (
     TimeSlot
 )
 from app.services.appointment_service import get_available_slots
+from app.services.notification_service import create_notification
 from app.api.deps import get_current_user, RoleChecker
 
 router = APIRouter(prefix="/appointments", tags=["Appointments"])
@@ -100,7 +101,15 @@ async def book_appointment(
         )
         .where(Appointment.id == appointment.id)
     )
-    return result.scalars().first()
+    appointment = result.scalars().first()
+    await create_notification(
+        db,
+        doctor.user_id,
+        "New appointment request",
+        f"{current_user.full_name} requested an appointment for {booking_in.appointment_date}.",
+        "/doctor/appointments",
+    )
+    return appointment
 
 @router.get("/my-appointments", response_model=List[AppointmentResponse])
 async def get_my_appointments(
@@ -162,4 +171,16 @@ async def update_appointment_status(
         )
         .where(Appointment.id == appointment.id)
     )
-    return result.scalars().first()
+    updated_appointment = result.scalars().first()
+    if current_user.role == UserRole.PATIENT:
+        recipient_id = updated_appointment.doctor.user_id
+    else:
+        recipient_id = updated_appointment.patient_id
+    await create_notification(
+        db,
+        recipient_id,
+        "Appointment updated",
+        f"Appointment #{updated_appointment.id} is now {updated_appointment.status.value.lower()}.",
+        "/appointments" if current_user.role == UserRole.DOCTOR else "/doctor/appointments",
+    )
+    return updated_appointment

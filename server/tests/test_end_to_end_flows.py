@@ -159,3 +159,51 @@ async def test_core_healthcare_workflow(client, db_session):
     )
     assert history_res.status_code == 200
     assert len(history_res.json()) == 1
+
+    doctor_notifications = await client.get(
+        "/api/v1/communication/notifications",
+        headers=d_headers,
+    )
+    chat_notification = next(
+        item
+        for item in doctor_notifications.json()
+        if item["title"] == "New message"
+    )
+    forbidden_read = await client.patch(
+        f"/api/v1/communication/notifications/{chat_notification['id']}/read",
+        headers=p_headers,
+    )
+    assert forbidden_read.status_code == 404
+
+    unrelated_res = await client.post("/api/v1/auth/register", json={
+        "email": "unrelated@test.com",
+        "password": "Password123!",
+        "full_name": "Unrelated Patient",
+        "role": "PATIENT",
+    })
+    assert unrelated_res.status_code == 201
+    unrelated_token = (
+        await client.post(
+            "/api/v1/auth/login",
+            data={
+                "username": "unrelated@test.com",
+                "password": "Password123!",
+            },
+        )
+    ).json()["access_token"]
+    unrelated_headers = {"Authorization": f"Bearer {unrelated_token}"}
+    forbidden_history = await client.get(
+        f"/api/v1/communication/chat/history/{doctor_user_id}",
+        headers=unrelated_headers,
+    )
+    assert forbidden_history.status_code == 404
+    forbidden_message = await client.post(
+        "/api/v1/communication/chat/send",
+        headers=unrelated_headers,
+        json={
+            "recipient_id": doctor_user_id,
+            "appointment_id": appointment_id,
+            "content": "This should not be delivered.",
+        },
+    )
+    assert forbidden_message.status_code == 403

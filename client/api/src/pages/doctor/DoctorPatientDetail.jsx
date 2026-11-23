@@ -2,6 +2,7 @@ import React, { useState, useEffect } from "react";
 import { useParams, Link } from "react-router-dom";
 import { recordService } from "../../services/recordService";
 import { appointmentService } from "../../services/appointmentService";
+import DoctorPatientChat from "../DoctorPatientChat";
 import {
   Pill,
   Activity,
@@ -73,6 +74,14 @@ const DoctorPatientDetail = () => {
           </p>
         </div>
       </div>
+
+      {appointments[0] && (
+        <DoctorPatientChat
+          recipientId={Number(patientId)}
+          recipientName={patientInfo.full_name}
+          appointmentId={appointments[0].id}
+        />
+      )}
 
       {/* Prescriptions Section */}
       <div className="bg-white p-6 rounded-2xl shadow-sm border border-gray-100 space-y-4">

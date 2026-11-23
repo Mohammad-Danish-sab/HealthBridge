@@ -1,6 +1,7 @@
 import json
-from typing import List, Optional
+from typing import List
 from fastapi import APIRouter, Depends, HTTPException, WebSocket, WebSocketDisconnect, Query, status
+from pydantic import ValidationError
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.future import select
 from sqlalchemy import or_, and_
@@ -14,24 +15,58 @@ from app.models.user import User
 from app.models.communication import ChatMessage, Notification
 from app.models.appointment import Appointment
 from app.models.user import UserRole
+from app.models.doctor import DoctorProfile
 from app.api.deps import RoleChecker
 from app.schemas.communication import ChatMessageCreate, ChatMessageResponse, NotificationResponse
 from app.services.websocket_manager import ws_manager
 from app.api.deps import get_current_user
+from app.services.notification_service import create_notification
 
 router = APIRouter(prefix="/communication", tags=["Communication & Realtime"])
 allow_chat_participants = RoleChecker([UserRole.PATIENT, UserRole.DOCTOR])
 
-async def get_ws_user(token: str) -> Optional[User]:
+async def get_ws_user(token: str) -> User | None:
     try:
         payload = jwt.decode(token, settings.SECRET_KEY, algorithms=[ALGORITHM])
         user_id = payload.get("sub")
         if not user_id:
             return None
         async with AsyncSessionLocal() as db:
-            return await db.get(User, int(user_id))
-    except JWTError:
+            user = await db.get(User, int(user_id))
+            if user is None or not user.is_active:
+                return None
+            return user
+    except (JWTError, TypeError, ValueError):
         return None
+
+
+async def _has_chat_relationship(
+    db: AsyncSession,
+    first_user: User,
+    second_user: User,
+    appointment_id: int | None = None,
+) -> bool:
+    if first_user.role == UserRole.PATIENT and second_user.role == UserRole.DOCTOR:
+        patient, doctor = first_user, second_user
+    elif first_user.role == UserRole.DOCTOR and second_user.role == UserRole.PATIENT:
+        patient, doctor = second_user, first_user
+    else:
+        return False
+
+    relationship_query = (
+        select(Appointment.id)
+        .join(DoctorProfile, Appointment.doctor_id == DoctorProfile.id)
+        .where(
+            Appointment.patient_id == patient.id,
+            DoctorProfile.user_id == doctor.id,
+        )
+    )
+    if appointment_id is not None:
+        relationship_query = relationship_query.where(
+            Appointment.id == appointment_id
+        )
+    return await db.scalar(relationship_query.limit(1)) is not None
+
 
 @router.websocket("/ws")
 async def websocket_endpoint(websocket: WebSocket, token: str = Query(...)):
@@ -44,69 +79,65 @@ async def websocket_endpoint(websocket: WebSocket, token: str = Query(...)):
     try:
         while True:
             raw_data = await websocket.receive_text()
-            payload = json.loads(raw_data)
+            try:
+                payload = ChatMessageCreate.model_validate(json.loads(raw_data))
+            except (json.JSONDecodeError, ValidationError, TypeError):
+                await websocket.send_json(
+                    {"type": "ERROR", "message": "Invalid chat message payload."}
+                )
+                continue
 
-            recipient_id = payload.get("recipient_id")
-            content = payload.get("content")
-            appointment_id = payload.get("appointment_id")
-
-            if recipient_id and content:
-                if not isinstance(recipient_id, int):
-                    await websocket.send_json({"type": "ERROR", "message": "A valid recipient_id is required."})
-                    continue
-                recipient = await _get_chat_recipient(user.id, recipient_id)
-                if recipient is None:
-                    await websocket.send_json({"type": "ERROR", "message": "Recipient not found or chat is not allowed."})
-                    continue
-                async with AsyncSessionLocal() as db:
-                    msg = ChatMessage(
-                        sender_id=user.id,
-                        recipient_id=recipient_id,
-                        appointment_id=appointment_id,
-                        content=content
+            async with AsyncSessionLocal() as db:
+                recipient = await db.get(User, payload.recipient_id)
+                if (
+                    recipient is None
+                    or not recipient.is_active
+                    or not await _has_chat_relationship(
+                        db, user, recipient, payload.appointment_id
                     )
-                    db.add(msg)
-                    await db.commit()
-                    await db.refresh(msg)
-
-                    out_payload = {
-                        "type": "CHAT_MESSAGE",
-                        "data": {
-                            "id": msg.id,
-                            "sender_id": user.id,
-                            "recipient_id": recipient_id,
-                            "appointment_id": appointment_id,
-                            "content": content,
-                            "timestamp": msg.timestamp.isoformat(),
-                            "sender_name": user.full_name
+                ):
+                    await websocket.send_json(
+                        {
+                            "type": "ERROR",
+                            "message": "Recipient not found or chat is not allowed.",
                         }
-                    }
+                    )
+                    continue
 
-                    # Push to sender and recipient
-                    await ws_manager.send_personal_message(out_payload, recipient_id)
-                    await ws_manager.send_personal_message(out_payload, user.id)
-
+                msg = ChatMessage(
+                    sender_id=user.id,
+                    recipient_id=recipient.id,
+                    appointment_id=payload.appointment_id,
+                    content=payload.content,
+                )
+                db.add(msg)
+                await db.commit()
+                await db.refresh(msg)
+                out_payload = {
+                    "type": "CHAT_MESSAGE",
+                    "data": {
+                        "id": msg.id,
+                        "sender_id": user.id,
+                        "recipient_id": recipient.id,
+                        "appointment_id": payload.appointment_id,
+                        "content": payload.content,
+                        "timestamp": msg.timestamp.isoformat(),
+                        "sender_name": user.full_name,
+                    },
+                }
+                await create_notification(
+                    db,
+                    recipient.id,
+                    "New message",
+                    f"{user.full_name} sent you a message.",
+                    "/notifications",
+                )
+                await ws_manager.send_personal_message(out_payload, recipient.id)
+                await ws_manager.send_personal_message(out_payload, user.id)
     except WebSocketDisconnect:
+        pass
+    finally:
         ws_manager.disconnect(user.id, websocket)
-    except Exception:
-        ws_manager.disconnect(user.id, websocket)
-
-
-async def _get_chat_recipient(sender_id: int, recipient_id: int) -> User | None:
-    async with AsyncSessionLocal() as db:
-        recipient = await db.get(User, recipient_id)
-        if recipient is None or not recipient.is_active:
-            return None
-        if recipient_id == sender_id:
-            return None
-        sender = await db.get(User, sender_id)
-        if sender is None:
-            return None
-        if sender.role not in (UserRole.PATIENT, UserRole.DOCTOR):
-            return None
-        if recipient.role not in (UserRole.PATIENT, UserRole.DOCTOR):
-            return None
-        return recipient
 
 
 @router.post("/chat/send", response_model=ChatMessageResponse)
@@ -121,27 +152,19 @@ async def send_chat_message(
     if recipient.id == current_user.id:
         raise HTTPException(status_code=400, detail="Cannot send a message to yourself.")
 
-    content = message_in.content.strip()
-    if not content:
-        raise HTTPException(status_code=400, detail="Message content cannot be empty.")
-
-    if message_in.appointment_id is not None:
-        appointment = await db.get(Appointment, message_in.appointment_id)
-        if appointment is None:
-            raise HTTPException(status_code=404, detail="Appointment not found.")
-        participant_ids = {appointment.patient_id}
-        from app.models.doctor import DoctorProfile
-        doctor = await db.get(DoctorProfile, appointment.doctor_id)
-        if doctor is not None:
-            participant_ids.add(doctor.user_id)
-        if current_user.id not in participant_ids or recipient.id not in participant_ids:
-            raise HTTPException(status_code=403, detail="Chat recipient is not a participant in this appointment.")
+    if not await _has_chat_relationship(
+        db, current_user, recipient, message_in.appointment_id
+    ):
+        raise HTTPException(
+            status_code=403,
+            detail="Chat is only allowed between a patient's own doctor and that patient.",
+        )
 
     msg = ChatMessage(
         sender_id=current_user.id,
         recipient_id=recipient.id,
         appointment_id=message_in.appointment_id,
-        content=content,
+        content=message_in.content,
     )
     db.add(msg)
     await db.commit()
@@ -150,7 +173,29 @@ async def send_chat_message(
         .options(selectinload(ChatMessage.sender))
         .where(ChatMessage.id == msg.id)
     )
-    return result.scalars().first()
+    message = result.scalars().first()
+    await create_notification(
+        db,
+        recipient.id,
+        "New message",
+        f"{current_user.full_name} sent you a message.",
+        "/notifications",
+    )
+    event = {
+        "type": "CHAT_MESSAGE",
+        "data": {
+            "id": message.id,
+            "sender_id": current_user.id,
+            "recipient_id": recipient.id,
+            "appointment_id": message_in.appointment_id,
+            "content": message_in.content,
+            "timestamp": message.timestamp.isoformat(),
+            "sender_name": current_user.full_name,
+        },
+    }
+    await ws_manager.send_personal_message(event, recipient.id)
+    await ws_manager.send_personal_message(event, current_user.id)
+    return message
 
 @router.get("/chat/history/{other_user_id}", response_model=List[ChatMessageResponse])
 async def get_chat_history(
@@ -158,6 +203,15 @@ async def get_chat_history(
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_user)
 ):
+    other_user = await db.get(User, other_user_id)
+    if (
+        other_user is None
+        or not other_user.is_active
+        or other_user.id == current_user.id
+        or not await _has_chat_relationship(db, current_user, other_user)
+    ):
+        raise HTTPException(status_code=404, detail="Chat not found.")
+
     result = await db.execute(
         select(ChatMessage)
         .options(selectinload(ChatMessage.sender))
