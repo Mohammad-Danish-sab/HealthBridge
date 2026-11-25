@@ -8,6 +8,7 @@ from app.db.session import get_db
 from app.models.user import User, UserRole
 from app.models.medical_record import Prescription, LabReport
 from app.models.appointment import Appointment
+from app.models.doctor import DoctorProfile
 from app.models.pharmacy import Complaint
 from app.api.deps import get_current_user, RoleChecker
 from app.ai.schemas import (
@@ -72,8 +73,14 @@ async def ai_summarize_uploaded_pdf(
 
     extracted_text = ""
     if file.content_type == "application/pdf":
-        reader = PdfReader(io.BytesIO(raw_bytes))
-        extracted_text = "\n".join(page.extract_text() or "" for page in reader.pages)
+        try:
+            reader = PdfReader(io.BytesIO(raw_bytes))
+            extracted_text = "\n".join(page.extract_text() or "" for page in reader.pages)
+        except Exception as exc:
+            raise HTTPException(
+                status_code=400,
+                detail="The uploaded PDF could not be read.",
+            ) from exc
     else:
         extracted_text = raw_bytes.decode("utf-8", errors="ignore")
 
@@ -96,6 +103,16 @@ async def ai_explain_prescription(
 
     if current_user.role == UserRole.PATIENT and rx.patient_id != current_user.id:
         raise HTTPException(status_code=403, detail="Not authorized to access this prescription.")
+    if current_user.role == UserRole.DOCTOR:
+        doctor_profile = await db.scalar(
+            select(DoctorProfile).where(
+                DoctorProfile.user_id == current_user.id
+            )
+        )
+        if doctor_profile is None or rx.doctor_id != doctor_profile.id:
+            raise HTTPException(status_code=403, detail="Not authorized to access this prescription.")
+    if current_user.role == UserRole.ADMIN:
+        raise HTTPException(status_code=403, detail="Administrators cannot access patient prescription content.")
 
     rx_dict = {
         "id": rx.id,
@@ -122,6 +139,26 @@ async def ai_summarize_patient_history(
 ):
     if current_user.role == UserRole.PATIENT and current_user.id != patient_id:
         raise HTTPException(status_code=403, detail="Access denied.")
+    if current_user.role == UserRole.DOCTOR:
+        doctor_profile = await db.scalar(
+            select(DoctorProfile).where(
+                DoctorProfile.user_id == current_user.id
+            )
+        )
+        if doctor_profile is None:
+            raise HTTPException(status_code=403, detail="Access denied.")
+        relationship = await db.scalar(
+            select(Appointment.id)
+            .where(
+                Appointment.patient_id == patient_id,
+                Appointment.doctor_id == doctor_profile.id,
+            )
+            .limit(1)
+        )
+        if relationship is None:
+            raise HTTPException(status_code=403, detail="Access denied.")
+    if current_user.role == UserRole.ADMIN:
+        raise HTTPException(status_code=403, detail="Administrators cannot access patient history.")
 
     rx_res = await db.execute(select(Prescription).where(Prescription.patient_id == patient_id))
     lab_res = await db.execute(select(LabReport).where(LabReport.patient_id == patient_id))

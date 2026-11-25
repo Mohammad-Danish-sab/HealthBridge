@@ -16,6 +16,20 @@ from app.ai.schemas import (
     AdminComplaintSummaryResponse,
 )
 
+def _string_list(value: Any) -> List[str]:
+    if not isinstance(value, list):
+        return []
+    return [item.strip() for item in value if isinstance(item, str) and item.strip()]
+
+def _string_dict_list(value: Any) -> List[Dict[str, str]]:
+    if not isinstance(value, list):
+        return []
+    return [
+        {str(key): str(item[key]) for key in item if isinstance(key, str)}
+        for item in value
+        if isinstance(item, dict)
+    ]
+
 async def summarize_medical_report(req: ReportSummaryRequest) -> ReportSummaryResponse:
     cleaned_text = sanitize_user_input(req.report_text)
     prompt_input = f"Report Type Hint: {req.report_type}\n\nDocument Text:\n{cleaned_text}"
@@ -28,10 +42,10 @@ async def summarize_medical_report(req: ReportSummaryRequest) -> ReportSummaryRe
     return ReportSummaryResponse(
         report_type=parsed.get("report_type", req.report_type or "Medical Report"),
         report_date=parsed.get("report_date"),
-        key_observations=parsed.get("key_observations", []),
-        reported_values=parsed.get("reported_values", []),
-        terms_to_clarify=parsed.get("terms_to_clarify", []),
-        questions_for_doctor=parsed.get("questions_for_doctor", []),
+        key_observations=_string_list(parsed.get("key_observations")),
+        reported_values=_string_dict_list(parsed.get("reported_values")),
+        terms_to_clarify=_string_list(parsed.get("terms_to_clarify")),
+        questions_for_doctor=_string_list(parsed.get("questions_for_doctor")),
         disclaimer=MEDICAL_DISCLAIMER,
     )
 
@@ -45,8 +59,8 @@ async def explain_prescription_record(prescription_data: Dict[str, Any]) -> Pres
     return PrescriptionExplainResponse(
         prescription_id=prescription_data["id"],
         plain_language_summary=parsed.get("plain_language_summary", ""),
-        medicine_breakdowns=parsed.get("medicine_breakdowns", []),
-        questions_for_doctor=parsed.get("questions_for_doctor", []),
+        medicine_breakdowns=_string_dict_list(parsed.get("medicine_breakdowns")),
+        questions_for_doctor=_string_list(parsed.get("questions_for_doctor")),
         disclaimer=MEDICAL_DISCLAIMER,
     )
 
@@ -74,7 +88,7 @@ async def summarize_patient_history(
             "appointments": len(appointments),
         },
         ai_narrative_summary=parsed.get("ai_narrative_summary", ""),
-        important_timeline_events=parsed.get("important_timeline_events", []),
+        important_timeline_events=_string_list(parsed.get("important_timeline_events")),
         disclaimer=MEDICAL_DISCLAIMER,
     )
 
@@ -89,7 +103,7 @@ async def summarize_admin_complaint(complaint_id: int, subject: str, description
         complaint_id=complaint_id,
         main_issue=parsed.get("main_issue", subject),
         category=parsed.get("category", "General Support"),
-        important_details=parsed.get("important_details", []),
+        important_details=_string_list(parsed.get("important_details")),
         requested_resolution=parsed.get("requested_resolution", "Review requested"),
         draft_response=parsed.get("draft_response", ""),
     )

@@ -207,3 +207,28 @@ async def test_core_healthcare_workflow(client, db_session):
         },
     )
     assert forbidden_message.status_code == 403
+
+    unrelated_history = await client.post(
+        f"/api/v1/ai/history/summarize/{patient_id}",
+        headers=unrelated_headers,
+    )
+    assert unrelated_history.status_code == 403
+
+    forbidden_ai_history = await client.post(
+        f"/api/v1/ai/history/summarize/{unrelated_res.json()['id']}",
+        headers=d_headers,
+    )
+    assert forbidden_ai_history.status_code == 403
+
+    admin_ai_history = await client.post(
+        f"/api/v1/ai/history/summarize/{patient_id}",
+        headers=a_headers,
+    )
+    assert admin_ai_history.status_code == 403
+
+    forbidden_ai_prescription = await client.post(
+        "/api/v1/ai/prescription/explain",
+        headers=unrelated_headers,
+        json={"prescription_id": rx_res.json()["id"]},
+    )
+    assert forbidden_ai_prescription.status_code == 403
