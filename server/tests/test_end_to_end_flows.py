@@ -232,3 +232,40 @@ async def test_core_healthcare_workflow(client, db_session):
         json={"prescription_id": rx_res.json()["id"]},
     )
     assert forbidden_ai_prescription.status_code == 403
+
+    other_doctor_res = await client.post("/api/v1/auth/register", json={
+        "email": "other-doctor@test.com",
+        "password": "Password123!",
+        "full_name": "Dr. Other",
+        "role": "DOCTOR",
+    })
+    assert other_doctor_res.status_code == 201
+    other_doctor_token = (
+        await client.post(
+            "/api/v1/auth/login",
+            data={
+                "username": "other-doctor@test.com",
+                "password": "Password123!",
+            },
+        )
+    ).json()["access_token"]
+    other_doctor_headers = {
+        "Authorization": f"Bearer {other_doctor_token}"
+    }
+    other_doctor_profile = await client.post(
+        "/api/v1/doctors/profile",
+        headers=other_doctor_headers,
+        json={
+            "specialization": "Neurology",
+            "qualifications": "MD",
+            "experience_years": 5,
+            "consultation_fee": 100.0,
+        },
+    )
+    assert other_doctor_profile.status_code == 201
+
+    forbidden_records = await client.get(
+        f"/api/v1/records/prescriptions/patient/{patient_id}",
+        headers=other_doctor_headers,
+    )
+    assert forbidden_records.status_code == 403

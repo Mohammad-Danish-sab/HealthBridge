@@ -2,12 +2,15 @@ import React, { useState, useEffect } from "react";
 import { useParams, Link } from "react-router-dom";
 import { recordService } from "../../services/recordService";
 import { appointmentService } from "../../services/appointmentService";
+import { aiService } from "../../services/aiService";
 import DoctorPatientChat from "../DoctorPatientChat";
 import {
   Pill,
   Activity,
   ArrowLeft,
   Download,
+  Bot,
+  AlertCircle,
 } from "lucide-react";
 
 const DoctorPatientDetail = () => {
@@ -16,6 +19,26 @@ const DoctorPatientDetail = () => {
   const [labReports, setLabReports] = useState([]);
   const [appointments, setAppointments] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [summarizing, setSummarizing] = useState(false);
+  const [historySummary, setHistorySummary] = useState(null);
+  const [summaryError, setSummaryError] = useState("");
+
+  const summarizeHistory = async () => {
+    setSummarizing(true);
+    setSummaryError("");
+    try {
+      setHistorySummary(
+        await aiService.summarizeHistory(Number(patientId)),
+      );
+    } catch (error) {
+      setSummaryError(
+        error.response?.data?.detail ||
+          "Unable to summarize this patient's history.",
+      );
+    } finally {
+      setSummarizing(false);
+    }
+  };
 
   useEffect(() => {
     const fetchPatientData = async () => {
@@ -73,6 +96,57 @@ const DoctorPatientDetail = () => {
             {patientInfo.phone_number || "No phone number"}
           </p>
         </div>
+      </div>
+
+      <div className="rounded-2xl border border-emerald-200 bg-emerald-50 p-5 sm:p-6">
+        <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
+          <div>
+            <h2 className="flex items-center gap-2 font-bold text-emerald-950">
+              <Bot className="h-5 w-5" /> AI patient history review
+            </h2>
+            <p className="mt-1 text-sm text-emerald-800">
+              Summarizes only this patient's stored prescriptions, lab reports,
+              and appointments for clinical review.
+            </p>
+          </div>
+          <button
+            type="button"
+            onClick={summarizeHistory}
+            disabled={summarizing}
+            className="inline-flex shrink-0 items-center justify-center gap-2 rounded-xl bg-emerald-700 px-4 py-2.5 text-sm font-bold text-white hover:bg-emerald-800 disabled:cursor-not-allowed disabled:opacity-60"
+          >
+            <Bot className="h-4 w-4" />
+            {summarizing ? "Summarizing..." : "Summarize history"}
+          </button>
+        </div>
+
+        {summaryError && (
+          <p
+            role="alert"
+            className="mt-4 flex items-start gap-2 rounded-lg border border-rose-200 bg-white p-3 text-sm text-rose-800"
+          >
+            <AlertCircle className="mt-0.5 h-4 w-4 shrink-0" />
+            {summaryError}
+          </p>
+        )}
+
+        {historySummary && (
+          <div className="mt-4 rounded-xl bg-white p-4">
+            <p className="text-sm leading-relaxed text-slate-800">
+              {historySummary.ai_narrative_summary}
+            </p>
+            {historySummary.important_timeline_events.length > 0 && (
+              <ul className="mt-3 list-disc space-y-1 pl-5 text-sm text-slate-700">
+                {historySummary.important_timeline_events.map((event, index) => (
+                  <li key={`${event}-${index}`}>{event}</li>
+                ))}
+              </ul>
+            )}
+            <p className="mt-4 text-xs text-slate-500">
+              {historySummary.disclaimer}
+            </p>
+          </div>
+        )}
       </div>
 
       {appointments[0] && (

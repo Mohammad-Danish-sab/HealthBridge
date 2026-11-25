@@ -25,4 +25,5 @@ export const aiService = {
     const response = await api.post(`/ai/history/summarize/${patientId}`);
     return response.data;
   },
+
 };

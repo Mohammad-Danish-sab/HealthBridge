@@ -84,6 +84,26 @@ async def get_patient_prescriptions(
 ):
     if current_user.role == UserRole.PATIENT and current_user.id != patient_id:
         raise HTTPException(status_code=403, detail="Access denied.")
+    if current_user.role == UserRole.DOCTOR:
+        doctor = await db.scalar(
+            select(DoctorProfile).where(
+                DoctorProfile.user_id == current_user.id
+            )
+        )
+        if doctor is None:
+            raise HTTPException(status_code=403, detail="Access denied.")
+        relationship = await db.scalar(
+            select(Appointment.id)
+            .where(
+                Appointment.patient_id == patient_id,
+                Appointment.doctor_id == doctor.id,
+            )
+            .limit(1)
+        )
+        if relationship is None:
+            raise HTTPException(status_code=403, detail="Access denied.")
+    if current_user.role == UserRole.ADMIN:
+        raise HTTPException(status_code=403, detail="Administrators cannot access patient records.")
 
     result = await db.execute(
         select(Prescription)
@@ -147,6 +167,26 @@ async def get_patient_lab_reports(
 ):
     if current_user.role == UserRole.PATIENT and current_user.id != patient_id:
         raise HTTPException(status_code=403, detail="Access denied.")
+    if current_user.role == UserRole.DOCTOR:
+        doctor = await db.scalar(
+            select(DoctorProfile).where(
+                DoctorProfile.user_id == current_user.id
+            )
+        )
+        if doctor is None:
+            raise HTTPException(status_code=403, detail="Access denied.")
+        relationship = await db.scalar(
+            select(Appointment.id)
+            .where(
+                Appointment.patient_id == patient_id,
+                Appointment.doctor_id == doctor.id,
+            )
+            .limit(1)
+        )
+        if relationship is None:
+            raise HTTPException(status_code=403, detail="Access denied.")
+    if current_user.role == UserRole.ADMIN:
+        raise HTTPException(status_code=403, detail="Administrators cannot access patient records.")
 
     result = await db.execute(
         select(LabReport)
