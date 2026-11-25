@@ -88,7 +88,12 @@ async def ai_summarize_uploaded_pdf(
         raise HTTPException(status_code=400, detail="Could not extract readable text from uploaded document.")
 
     req = ReportSummaryRequest(report_text=extracted_text, report_type=file.filename or "Uploaded Report")
-    return await summarize_medical_report(req)
+    try:
+        return await summarize_medical_report(req)
+    except ValueError as ve:
+        raise HTTPException(status_code=400, detail=str(ve)) from ve
+    except RuntimeError as re_err:
+        raise HTTPException(status_code=503, detail=str(re_err)) from re_err
 
 @router.post("/prescription/explain", response_model=PrescriptionExplainResponse)
 async def ai_explain_prescription(

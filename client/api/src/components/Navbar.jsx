@@ -1,12 +1,13 @@
 import React, { useEffect, useRef, useState } from "react";
 import { Link, NavLink } from "react-router-dom";
 import { useAuth } from "../context/AuthContext";
-import { Bell, Calendar, FileText, LayoutDashboard, LogOut, Menu, PackageOpen, ShieldCheck, ShoppingBag, Stethoscope, Users, X } from "lucide-react";
+import { Bell, Bot, Calendar, FileText, LayoutDashboard, LogOut, Menu, PackageOpen, ShieldCheck, ShoppingBag, Stethoscope, Users, X } from "lucide-react";
 import { chatService } from "../services/chatService";
 
 const patientLinks = [
   ["Dashboard", "/dashboard", LayoutDashboard], ["Find care", "/doctors", Stethoscope],
   ["Appointments", "/appointments", Calendar], ["Records", "/medical-records", FileText], ["Pharmacy", "/pharmacy", ShoppingBag],
+  ["AI Assistant", "/ai-assistant", Bot],
 ];
 const doctorLinks = [
   ["Dashboard", "/doctor/dashboard", LayoutDashboard], ["Appointments", "/doctor/appointments", Calendar],

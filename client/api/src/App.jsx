@@ -21,6 +21,7 @@ import PatientAppointments from "./pages/PatientAppointments";
 import DoctorSearch from "./pages/DoctorSearch";
 import MedicalRecords from "./pages/MedicalRecords";
 import PharmacyCatalog from "./pages/PharmacyCatalog";
+import AIAssistant from "./pages/AIAssistant";
 
 // Doctor Pages
 import DoctorDashboard from "./pages/doctor/DoctorDashboard";
@@ -90,6 +91,7 @@ function App() {
                 <Route path="/medical-records" element={<MedicalRecords />} />
                 <Route path="/prescriptions" element={<MedicalRecords />} />
                 <Route path="/pharmacy" element={<PharmacyCatalog />} />
+                <Route path="/ai-assistant" element={<AIAssistant />} />
               </Route>
 
               {/* Doctor Protected Routes */}

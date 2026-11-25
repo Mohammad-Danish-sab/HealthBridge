@@ -1,7 +1,8 @@
 import React, { useState, useEffect, useCallback } from "react";
 import { recordService } from "../services/recordService";
+import { aiService } from "../services/aiService";
 import { useAuth } from "../context/AuthContext";
-import { FileText, Pill, Activity, Calendar, Download } from "lucide-react";
+import { FileText, Pill, Activity, Calendar, Download, Bot } from "lucide-react";
 
 const MedicalRecords = () => {
   const { user } = useAuth();
@@ -9,6 +10,41 @@ const MedicalRecords = () => {
   const [labReports, setLabReports] = useState([]);
   const [activeTab, setActiveTab] = useState("prescriptions");
   const [loading, setLoading] = useState(true);
+  const [explainingId, setExplainingId] = useState(null);
+  const [explanation, setExplanation] = useState(null);
+  const [summarizingHistory, setSummarizingHistory] = useState(false);
+  const [historySummary, setHistorySummary] = useState(null);
+  const [aiError, setAiError] = useState("");
+
+  const explainPrescription = async (prescriptionId) => {
+    setExplainingId(prescriptionId);
+    setAiError("");
+    try {
+      setExplanation(await aiService.explainPrescription(prescriptionId));
+    } catch (error) {
+      setAiError(
+        error.response?.data?.detail ||
+          "Unable to explain this prescription. Please try again.",
+      );
+    } finally {
+      setExplainingId(null);
+    }
+  };
+
+  const summarizeHistory = async () => {
+    setSummarizingHistory(true);
+    setAiError("");
+    try {
+      setHistorySummary(await aiService.summarizeHistory(user.id));
+    } catch (error) {
+      setAiError(
+        error.response?.data?.detail ||
+          "Unable to summarize your medical history. Please try again.",
+      );
+    } finally {
+      setSummarizingHistory(false);
+    }
+  };
 
   const fetchRecords = useCallback(async () => {
     if (!user) return;
@@ -34,9 +70,20 @@ const MedicalRecords = () => {
   return (
     <div className="min-h-screen bg-gray-50 py-8 px-4 sm:px-6 lg:px-8">
       <div className="max-w-6xl mx-auto">
-        <h1 className="text-3xl font-bold text-gray-900 mb-6">
-          Medical History Timeline
-        </h1>
+        <div className="mb-6 flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+          <h1 className="text-3xl font-bold text-gray-900">
+            Medical History Timeline
+          </h1>
+          <button
+            type="button"
+            onClick={summarizeHistory}
+            disabled={summarizingHistory}
+            className="inline-flex items-center justify-center gap-2 rounded-xl bg-violet-600 px-4 py-2.5 text-sm font-bold text-white hover:bg-violet-700 disabled:cursor-not-allowed disabled:opacity-60"
+          >
+            <Bot className="h-4 w-4" />
+            {summarizingHistory ? "Summarizing..." : "Summarize history with AI"}
+          </button>
+        </div>
 
         {/* Tab Controls */}
         <div className="flex border-b border-gray-200 mb-8 bg-white rounded-t-xl px-4 pt-2">
@@ -62,6 +109,66 @@ const MedicalRecords = () => {
             <Activity className="h-4 w-4" /> Lab Reports ({labReports.length})
           </button>
         </div>
+
+        {aiError && (
+          <div role="alert" className="mb-6 rounded-xl border border-rose-200 bg-rose-50 p-4 text-sm text-rose-800">
+            {aiError}
+          </div>
+        )}
+        {historySummary && (
+          <div className="mb-6 rounded-2xl border border-indigo-200 bg-indigo-50 p-5 sm:p-6">
+            <h2 className="font-bold text-indigo-950">AI medical history summary</h2>
+            <p className="mt-2 text-sm leading-relaxed text-indigo-900">
+              {historySummary.ai_narrative_summary}
+            </p>
+            {historySummary.important_timeline_events.length > 0 && (
+              <ul className="mt-3 list-disc space-y-1 pl-5 text-sm text-indigo-900">
+                {historySummary.important_timeline_events.map((event, index) => (
+                  <li key={`${event}-${index}`}>{event}</li>
+                ))}
+              </ul>
+            )}
+            <p className="mt-4 text-xs text-indigo-700">
+              {historySummary.disclaimer}
+            </p>
+          </div>
+        )}
+        {explanation && (
+          <div className="mb-6 rounded-2xl border border-violet-200 bg-violet-50 p-5 sm:p-6">
+            <div className="flex items-start gap-3">
+              <Bot className="mt-0.5 h-5 w-5 shrink-0 text-violet-700" />
+              <div className="min-w-0">
+                <h2 className="font-bold text-violet-950">AI prescription explanation</h2>
+                <p className="mt-2 text-sm leading-relaxed text-violet-900">
+                  {explanation.plain_language_summary}
+                </p>
+                {explanation.medicine_breakdowns.length > 0 && (
+                  <ul className="mt-3 space-y-2 text-sm text-violet-900">
+                    {explanation.medicine_breakdowns.map((item, index) => (
+                      <li key={`${item.medicine}-${index}`} className="rounded-lg bg-white/70 p-3">
+                        <strong>{item.medicine}:</strong> {item.how_to_take}
+                        {item.purpose ? ` ${item.purpose}` : ""}
+                      </li>
+                    ))}
+                  </ul>
+                )}
+                {explanation.questions_for_doctor.length > 0 && (
+                  <div className="mt-4">
+                    <p className="text-xs font-bold uppercase tracking-wide text-violet-700">
+                      Questions for your doctor
+                    </p>
+                    <ul className="mt-2 list-disc space-y-1 pl-5 text-sm text-violet-900">
+                      {explanation.questions_for_doctor.map((question, index) => (
+                        <li key={`${question}-${index}`}>{question}</li>
+                      ))}
+                    </ul>
+                  </div>
+                )}
+                <p className="mt-4 text-xs text-violet-700">{explanation.disclaimer}</p>
+              </div>
+            </div>
+          </div>
+        )}
 
         {loading ? (
           <div className="text-center py-12">
@@ -154,6 +261,17 @@ const MedicalRecords = () => {
                       <strong>Doctor Notes:</strong> {rx.notes}
                     </div>
                   )}
+                  <button
+                    type="button"
+                    onClick={() => explainPrescription(rx.id)}
+                    disabled={explainingId !== null}
+                    className="inline-flex items-center gap-2 rounded-lg border border-violet-200 px-4 py-2 text-sm font-bold text-violet-700 hover:bg-violet-50 disabled:cursor-not-allowed disabled:opacity-60"
+                  >
+                    <Bot className="h-4 w-4" />
+                    {explainingId === rx.id
+                      ? "Explaining..."
+                      : "Explain with AI"}
+                  </button>
                 </div>
               ))
             )}

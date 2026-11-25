@@ -18,7 +18,10 @@ async def handle_health_chat(request: AIChatRequest) -> AIChatResponse:
             disclaimer=MEDICAL_DISCLAIMER,
         )
 
-    conversation = [{"role": turn.role, "content": turn.content} for turn in request.history]
+    conversation = []
+    for turn in request.history:
+        cleaned_turn = sanitize_user_input(turn.content)
+        conversation.append({"role": turn.role, "content": cleaned_turn})
     conversation.append({"role": "user", "content": cleaned_message})
 
     reply_text = await llm_client.generate_text(
