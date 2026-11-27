@@ -4,6 +4,7 @@ from fastapi import APIRouter, Depends, HTTPException, Request, status
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.core.rate_limit import limiter
 from app.api.deps import create_access_token, get_current_user, hash_password, verify_password
 from app.db.session import get_db
 from app.models.user import User, UserRole
@@ -45,6 +46,7 @@ async def register(
 
 
 @router.post("/login", response_model=TokenResponse)
+@limiter.limit("5/minute")
 async def login(
     request: Request,
     db: Annotated[AsyncSession, Depends(get_db)],

@@ -13,3 +13,5 @@ httpx
 pytest
 pytest-asyncio
 pypdf
+slowapi
+redis>=5,<7

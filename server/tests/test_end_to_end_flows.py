@@ -1,4 +1,5 @@
 import pytest
+from httpx import ASGITransport, AsyncClient
 from sqlalchemy import select
 from sqlalchemy.exc import OperationalError
 
@@ -51,6 +52,29 @@ async def test_readiness_returns_service_unavailable_when_database_is_down(clien
 
     assert response.status_code == 503
     assert response.json() == {"detail": "Database unavailable."}
+
+
+@pytest.mark.asyncio
+async def test_login_is_rate_limited_per_client_ip(db_session):
+    async def override_get_db():
+        yield db_session
+
+    app.dependency_overrides[get_db] = override_get_db
+    transport = ASGITransport(app=app, client=("198.51.100.42", 12345))
+    try:
+        async with AsyncClient(transport=transport, base_url="http://test") as limited_client:
+            responses = [
+                await limited_client.post(
+                    "/api/v1/auth/login",
+                    json={"email": "unknown@test.com", "password": "WrongPassword123!"},
+                )
+                for _ in range(6)
+            ]
+    finally:
+        app.dependency_overrides.pop(get_db, None)
+
+    assert [response.status_code for response in responses[:5]] == [401] * 5
+    assert responses[5].status_code == 429
 
 
 @pytest.mark.asyncio

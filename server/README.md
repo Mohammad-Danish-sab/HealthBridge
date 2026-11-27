@@ -23,15 +23,18 @@ do not commit that file.
 
 Set `ENVIRONMENT=production` before starting a production deployment. Startup
 then rejects the development JWT key, non-PostgreSQL databases, and wildcard,
-local, or non-HTTPS CORS origins. Generate a unique signing key rather than
-reusing the example value:
+local, or non-HTTPS CORS origins, and requires Redis-backed rate limiting.
+Generate a unique signing key rather than reusing the example value:
 
 ```powershell
 python -c "import secrets; print(secrets.token_urlsafe(48))"
 ```
 
 Configure `SECRET_KEY`, `DATABASE_URL`, and `BACKEND_CORS_ORIGINS` in the
-deployment environment. `BACKEND_CORS_ORIGINS` is a JSON array, for example
+deployment environment. Set `RATE_LIMIT_STORAGE_URI` to a reachable Redis URL
+(`redis://` or TLS-protected `rediss://`) so limits are shared between API
+instances. Login is limited to five attempts per client IP per minute.
+`BACKEND_CORS_ORIGINS` is a JSON array, for example
 `["https://app.example.com"]`. Interactive API documentation and the OpenAPI
 schema are disabled in production.
 
@@ -50,10 +53,10 @@ For a local containerized stack, copy the repository-root `.env.example` to
 docker compose up --build
 ```
 
-This starts PostgreSQL, applies Alembic migrations, and runs the API on port
-8000. The PostgreSQL data volume is persistent. Stop the stack with
-`docker compose down`; add `--volumes` only when explicitly resetting all local
-database data.
+This starts PostgreSQL and Redis, applies Alembic migrations, and runs the API
+on port 8000. The PostgreSQL data volume is persistent; Redis is internal to
+the Compose network. Stop the stack with `docker compose down`; add `--volumes`
+only when explicitly resetting all local database data.
 
 Provide a strong `SECRET_KEY`, a PostgreSQL `DATABASE_URL`, and HTTPS
 `BACKEND_CORS_ORIGINS` through the deployment platform's secret/environment

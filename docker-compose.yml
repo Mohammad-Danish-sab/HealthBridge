@@ -18,6 +18,15 @@ services:
       timeout: 5s
       retries: 10
 
+  redis:
+    image: redis:7-alpine
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+
   api:
     build:
       context: ./server
@@ -25,10 +34,16 @@ services:
     environment:
       ENVIRONMENT: ${ENVIRONMENT:-development}
       SECRET_KEY: ${SECRET_KEY:-CHANGE_THIS_IN_PRODUCTION_SECRET_KEY_MIN_32_CHARS}
-      DATABASE_URL: postgresql+asyncpg://${POSTGRES_USER:-healthbridge}:${POSTGRES_PASSWORD:-healthbridge-dev-password}@db:5432/${POSTGRES_DB:-healthbridge}
+      POSTGRES_SERVER: db
+      POSTGRES_USER: ${POSTGRES_USER:-healthbridge}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-healthbridge-dev-password}
+      POSTGRES_DB: ${POSTGRES_DB:-healthbridge}
+      RATE_LIMIT_STORAGE_URI: ${RATE_LIMIT_STORAGE_URI:-redis://redis:6379/0}
       BACKEND_CORS_ORIGINS: ${BACKEND_CORS_ORIGINS:-["http://localhost:5173","http://127.0.0.1:5173"]}
     depends_on:
       db:
+        condition: service_healthy
+      redis:
         condition: service_healthy
     ports:
       - "${API_PORT:-8000}:8000"

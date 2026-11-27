@@ -2,6 +2,8 @@ import logging
 from fastapi import FastAPI
 from fastapi import Depends, HTTPException, status
 from fastapi.middleware.cors import CORSMiddleware
+from slowapi import _rate_limit_exceeded_handler
+from slowapi.errors import RateLimitExceeded
 from contextlib import asynccontextmanager
 from sqlalchemy import text
 from sqlalchemy.exc import SQLAlchemyError
@@ -9,6 +11,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.core.config import settings
 from app.api.v1 import auth, doctors, appointments, records, pharmacy, admin, communication, ai, complaints
 from app.db.session import engine, get_db
+from app.core.rate_limit import limiter
 
 
 logger = logging.getLogger(__name__)
@@ -33,6 +36,8 @@ app = FastAPI(
     redoc_url="/redoc" if settings.ENVIRONMENT != "production" else None,
     lifespan=lifespan,
 )
+app.state.limiter = limiter
+app.add_exception_handler(RateLimitExceeded, _rate_limit_exceeded_handler)
 
 if settings.BACKEND_CORS_ORIGINS:
     app.add_middleware(

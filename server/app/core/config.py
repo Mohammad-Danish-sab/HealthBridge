@@ -1,5 +1,6 @@
 from pathlib import Path
 from typing import Literal
+from urllib.parse import urlsplit
 
 from pydantic import model_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
@@ -15,6 +16,7 @@ class Settings(BaseSettings):
     ENVIRONMENT: Literal["development", "test", "staging", "production"] = "development"
     SECRET_KEY: str = "CHANGE_THIS_IN_PRODUCTION_SECRET_KEY_MIN_32_CHARS"
     ACCESS_TOKEN_EXPIRE_MINUTES: int = 60 * 24 * 8
+    RATE_LIMIT_STORAGE_URI: str = "memory://"
 
     POSTGRES_SERVER: str | None = None
     POSTGRES_USER: str = "postgres"
@@ -52,6 +54,15 @@ class Settings(BaseSettings):
             )
         if self.database_url.get_backend_name() != "postgresql":
             raise ValueError("Production deployments must use PostgreSQL.")
+        rate_limit_storage = urlsplit(self.RATE_LIMIT_STORAGE_URI)
+        if (
+            rate_limit_storage.scheme not in {"redis", "rediss"}
+            or not rate_limit_storage.hostname
+        ):
+            raise ValueError(
+                "Production deployments must configure a reachable Redis URL "
+                "for rate-limit storage."
+            )
         if not self.BACKEND_CORS_ORIGINS:
             raise ValueError("Configure BACKEND_CORS_ORIGINS for production.")
         if any(

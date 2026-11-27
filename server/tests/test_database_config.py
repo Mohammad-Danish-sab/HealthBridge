@@ -72,12 +72,37 @@ def test_production_settings_require_postgresql():
         )
 
 
+def test_production_settings_require_redis_rate_limit_storage():
+    with pytest.raises(ValueError, match="Redis"):
+        Settings(
+            ENVIRONMENT="production",
+            SECRET_KEY="x" * 48,
+            DATABASE_URL="postgresql://user:password@db.example.com/healthbridge",
+            RATE_LIMIT_STORAGE_URI="memory://",
+            BACKEND_CORS_ORIGINS=["https://healthbridge.example.com"],
+            _env_file=None,
+        )
+
+
+def test_production_settings_require_redis_host():
+    with pytest.raises(ValueError, match="Redis URL"):
+        Settings(
+            ENVIRONMENT="production",
+            SECRET_KEY="x" * 48,
+            DATABASE_URL="postgresql://user:password@db.example.com/healthbridge",
+            RATE_LIMIT_STORAGE_URI="rediss://",
+            BACKEND_CORS_ORIGINS=["https://healthbridge.example.com"],
+            _env_file=None,
+        )
+
+
 def test_production_settings_reject_local_cors_origins():
     with pytest.raises(ValueError, match="CORS"):
         Settings(
             ENVIRONMENT="production",
             SECRET_KEY="x" * 48,
             DATABASE_URL="postgresql://user:password@db.example.com/healthbridge",
+            RATE_LIMIT_STORAGE_URI="rediss://cache.example.com:6379/0",
             BACKEND_CORS_ORIGINS=["http://localhost:5173"],
             _env_file=None,
         )
@@ -88,6 +113,7 @@ def test_production_settings_accept_explicit_secure_configuration():
         ENVIRONMENT="production",
         SECRET_KEY="x" * 48,
         DATABASE_URL="postgresql://user:password@db.example.com/healthbridge",
+        RATE_LIMIT_STORAGE_URI="rediss://cache.example.com:6379/0",
         BACKEND_CORS_ORIGINS=["https://healthbridge.example.com"],
         _env_file=None,
     )
@@ -101,6 +127,7 @@ def test_production_settings_reject_non_https_cors_origins():
             ENVIRONMENT="production",
             SECRET_KEY="x" * 48,
             DATABASE_URL="postgresql://user:password@db.example.com/healthbridge",
+            RATE_LIMIT_STORAGE_URI="rediss://cache.example.com:6379/0",
             BACKEND_CORS_ORIGINS=["http://healthbridge.example.com"],
             _env_file=None,
         )
