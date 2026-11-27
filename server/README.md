@@ -35,6 +35,33 @@ deployment environment. `BACKEND_CORS_ORIGINS` is a JSON array, for example
 `["https://app.example.com"]`. Interactive API documentation and the OpenAPI
 schema are disabled in production.
 
+## Container deployment
+
+Build the API image from the `server` directory:
+
+```powershell
+docker build -t healthbridge-api .
+```
+
+Provide a strong `SECRET_KEY`, a PostgreSQL `DATABASE_URL`, and HTTPS
+`BACKEND_CORS_ORIGINS` through the deployment platform's secret/environment
+configuration. Apply database migrations before starting the API:
+
+```powershell
+docker run --rm --entrypoint alembic `
+  -e ENVIRONMENT=production `
+  -e SECRET_KEY=$env:SECRET_KEY `
+  -e DATABASE_URL=$env:DATABASE_URL `
+  -e BACKEND_CORS_ORIGINS=$env:BACKEND_CORS_ORIGINS `
+  healthbridge-api upgrade head
+```
+
+Then run the service with the same environment variables and publish port 8000
+behind a TLS-terminating reverse proxy or load balancer. The image runs as a
+non-root user and its health check uses `/health/ready`, which requires the
+database to be reachable. Do not bake `.env` files or production secrets into
+the image.
+
 ## Apply database migrations
 
 From the `server` directory with the project environment activated:
