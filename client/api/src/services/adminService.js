@@ -11,6 +11,11 @@ export const adminService = {
     return response.data;
   },
 
+  createUser: async (user) => {
+    const response = await api.post("/admin/users", user);
+    return response.data;
+  },
+
   toggleUserStatus: async (userId) => {
     const response = await api.patch(`/admin/users/${userId}/toggle-status`);
     return response.data;
@@ -18,6 +23,29 @@ export const adminService = {
 
   getDoctors: async () => {
     const response = await api.get("/admin/doctors");
+    return response.data;
+  },
+
+  createDoctor: async (doctor) => {
+    const response = await api.post("/admin/doctors", doctor);
+    return response.data;
+  },
+
+  updateDoctor: async (doctorId, profile) => {
+    const response = await api.patch(`/admin/doctors/${doctorId}`, profile);
+    return response.data;
+  },
+
+  getDoctorAvailability: async (doctorId) => {
+    const response = await api.get(`/admin/doctors/${doctorId}/availability`);
+    return response.data;
+  },
+
+  setDoctorAvailability: async (doctorId, availability) => {
+    const response = await api.put(
+      `/admin/doctors/${doctorId}/availability`,
+      availability,
+    );
     return response.data;
   },
 
