@@ -1,4 +1,4 @@
-import React from "react";
+import React, { useCallback, useState } from "react";
 import {
   BrowserRouter as Router,
   Routes,
@@ -8,6 +8,7 @@ import {
 import { AuthProvider, useAuth } from "./context/AuthContext";
 import { ProtectedRoute } from "./components/ProtectedRoute";
 import { Navbar } from "./components/Navbar";
+import { Sidebar } from "./components/Sidebar";
 import "./App.css";
 
 // Auth & Shared Pages
@@ -50,14 +51,29 @@ const RootRedirect = () => {
   return <Navigate to="/dashboard" replace />;
 };
 
-function App() {
+const AppFrame = () => {
+  const { user } = useAuth();
+  const [sidebarOpen, setSidebarOpen] = useState(false);
+  const closeSidebar = useCallback(() => setSidebarOpen(false), []);
+
   return (
-    <AuthProvider>
-      <Router>
-        <div className="app-shell flex flex-col">
-          <Navbar />
-          <main className="flex-1 page-enter">
-            <Routes>
+    <div className="app-shell flex min-h-screen flex-col">
+      {user && (
+        <Navbar
+          onMenuClick={() => setSidebarOpen((open) => !open)}
+          menuOpen={sidebarOpen}
+        />
+      )}
+      <div className="mx-auto flex w-full max-w-[1600px] flex-1">
+        {user && (
+          <Sidebar
+            role={user.role}
+            open={sidebarOpen}
+            onClose={closeSidebar}
+          />
+        )}
+        <main className="min-w-0 flex-1 page-enter">
+          <Routes>
               {/* Public Routes */}
               <Route path="/" element={<RootRedirect />} />
               <Route path="/login" element={<Login />} />
@@ -132,9 +148,18 @@ function App() {
               </Route>
 
               <Route path="*" element={<RootRedirect />} />
-            </Routes>
-          </main>
-        </div>
+          </Routes>
+        </main>
+      </div>
+    </div>
+  );
+};
+
+function App() {
+  return (
+    <AuthProvider>
+      <Router>
+        <AppFrame />
       </Router>
     </AuthProvider>
   );

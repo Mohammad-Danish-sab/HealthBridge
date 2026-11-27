@@ -1,52 +1,63 @@
-import React, { useEffect, useRef, useState } from "react";
-import { Link, NavLink } from "react-router-dom";
+import { useEffect, useRef, useState } from "react";
+import { Link, NavLink, useLocation } from "react-router-dom";
+import { Bell, HeartPulse, LogOut, Menu } from "lucide-react";
 import { useAuth } from "../context/AuthContext";
-import { Bell, Bot, Calendar, FileText, LayoutDashboard, LifeBuoy, LogOut, Menu, PackageOpen, ShieldCheck, ShoppingBag, Stethoscope, Users, X } from "lucide-react";
 import { chatService } from "../services/chatService";
 
-const patientLinks = [
-  ["Dashboard", "/dashboard", LayoutDashboard], ["Find care", "/doctors", Stethoscope],
-  ["Appointments", "/appointments", Calendar], ["Records", "/medical-records", FileText], ["Pharmacy", "/pharmacy", ShoppingBag],
-  ["AI Assistant", "/ai-assistant", Bot], ["Support", "/support", LifeBuoy],
-];
-const doctorLinks = [
-  ["Dashboard", "/doctor/dashboard", LayoutDashboard], ["Appointments", "/doctor/appointments", Calendar],
-  ["Patients", "/doctor/patients", Users], ["Availability", "/doctor/availability", Calendar],
-];
-const adminLinks = [
-  ["Command center", "/admin/dashboard", LayoutDashboard], ["Users", "/admin/users", ShieldCheck], ["Pharmacy", "/admin/pharmacy", PackageOpen],
-  ["Doctors", "/admin/doctors", Stethoscope], ["Complaints", "/admin/complaints", LifeBuoy], ["Audit logs", "/admin/audit", FileText],
-];
+const pageTitles = {
+  "/dashboard": "Patient workspace",
+  "/doctors": "Find a doctor",
+  "/appointments": "Appointments",
+  "/medical-records": "Medical records",
+  "/prescriptions": "Prescriptions",
+  "/pharmacy": "Pharmacy",
+  "/ai-assistant": "AI health assistant",
+  "/support": "Help & support",
+  "/doctor/dashboard": "Doctor workspace",
+  "/doctor/appointments": "Appointments",
+  "/doctor/patients": "My patients",
+  "/doctor/availability": "Availability",
+  "/admin/dashboard": "Platform overview",
+  "/admin/users": "User management",
+  "/admin/pharmacy": "Pharmacy management",
+  "/admin/doctors": "Doctor verification",
+  "/admin/complaints": "Support requests",
+  "/admin/audit": "Audit activity",
+  "/notifications": "Notifications",
+};
 
-export const Navbar = () => {
+const roleLabels = {
+  PATIENT: "Patient portal",
+  DOCTOR: "Doctor portal",
+  ADMIN: "Administration",
+};
+
+export const Navbar = ({ onMenuClick, menuOpen }) => {
   const { user, logout } = useAuth();
-  const [open, setOpen] = useState(false);
+  const location = useLocation();
   const [unreadCount, setUnreadCount] = useState(0);
   const [notificationLoadError, setNotificationLoadError] = useState(false);
   const notificationIds = useRef(new Set());
 
   useEffect(() => {
-    if (!user) {
-      notificationIds.current.clear();
-      setUnreadCount(0);
-      return undefined;
-    }
-
     let active = true;
     notificationIds.current.clear();
-    chatService.getNotifications().then((items) => {
-      if (!active) return;
-      notificationIds.current = new Set(
-        items.filter((item) => !item.is_read).map((item) => item.id),
-      );
-      setUnreadCount(notificationIds.current.size);
-      setNotificationLoadError(false);
-    }).catch(() => {
-      if (active) {
-        setUnreadCount(0);
-        setNotificationLoadError(true);
-      }
-    });
+    chatService
+      .getNotifications()
+      .then((items) => {
+        if (!active) return;
+        notificationIds.current = new Set(
+          items.filter((item) => !item.is_read).map((item) => item.id),
+        );
+        setUnreadCount(notificationIds.current.size);
+        setNotificationLoadError(false);
+      })
+      .catch(() => {
+        if (active) {
+          setUnreadCount(0);
+          setNotificationLoadError(true);
+        }
+      });
 
     const token = localStorage.getItem("hb_access_token");
     const socket = token
@@ -63,10 +74,7 @@ export const Navbar = () => {
       notificationIds.current.delete(event.detail.id);
       setUnreadCount(notificationIds.current.size);
     };
-    window.addEventListener(
-      "healthbridge:notification-read",
-      handleNotificationRead,
-    );
+    window.addEventListener("healthbridge:notification-read", handleNotificationRead);
 
     return () => {
       active = false;
@@ -80,29 +88,101 @@ export const Navbar = () => {
 
   if (!user) return null;
 
-  const links = user.role === "DOCTOR" ? doctorLinks : user.role === "ADMIN" ? adminLinks : patientLinks;
-  const home = links[0][1];
-  const linkClass = ({ isActive }) => `flex items-center gap-2 rounded-lg px-3 py-2 text-sm font-semibold transition ${isActive ? "bg-indigo-50 text-indigo-700" : "text-slate-600 hover:bg-slate-100 hover:text-slate-950"}`;
+  const title =
+    pageTitles[location.pathname] ??
+    (location.pathname.startsWith("/doctor/patients/")
+      ? "Patient overview"
+      : location.pathname.startsWith("/doctor/prescribe/")
+        ? "Create prescription"
+        : "HealthBridge");
+  const initials = user.full_name
+    .split(/\s+/)
+    .filter(Boolean)
+    .slice(0, 2)
+    .map((part) => part[0])
+    .join("")
+    .toUpperCase();
 
   return (
-    <header className="sticky top-0 z-50 border-b border-slate-200/80 bg-white/85 backdrop-blur-xl">
-      <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
-        <div className="flex h-16 items-center justify-between gap-4">
-          <div className="flex min-w-0 items-center gap-6">
-            <Link to={home} className="flex shrink-0 items-center gap-2 text-lg font-black tracking-tight text-slate-950"><span className="grid h-8 w-8 place-items-center rounded-xl bg-indigo-600 text-sm text-white">H</span><span>HealthBridge</span></Link>
-            <nav className="hidden items-center gap-1 lg:flex" aria-label="Primary navigation">
-              {links.map(([label, path, Icon]) => <NavLink key={path} to={path} className={linkClass}><Icon className="h-4 w-4" />{label}</NavLink>)}
-            </nav>
-          </div>
-          <div className="flex items-center gap-1.5 sm:gap-3">
-            <NavLink to="/notifications" aria-label={`Notifications${unreadCount ? `, ${unreadCount} unread` : notificationLoadError ? ", unread count unavailable" : ""}`} title={notificationLoadError ? "Unread notification count unavailable" : undefined} className="relative rounded-lg p-2 text-slate-500 transition hover:bg-slate-100 hover:text-indigo-600"><Bell className="h-5 w-5" />{unreadCount > 0 && <span className="absolute -right-0.5 -top-0.5 grid h-4 min-w-4 place-items-center rounded-full bg-rose-600 px-1 text-[10px] font-bold text-white">{unreadCount > 99 ? "99+" : unreadCount}</span>}</NavLink>
-            <div className="hidden border-l border-slate-200 pl-3 text-right sm:block"><p className="max-w-32 truncate text-sm font-bold text-slate-900">{user.full_name}</p><p className="text-[11px] font-bold tracking-wide text-indigo-600">{user.role}</p></div>
-            <button onClick={logout} className="rounded-lg p-2 text-slate-500 transition hover:bg-rose-50 hover:text-rose-600" title="Sign out" aria-label="Sign out"><LogOut className="h-5 w-5" /></button>
-            <button onClick={() => setOpen((value) => !value)} className="rounded-lg p-2 text-slate-600 hover:bg-slate-100 lg:hidden" aria-expanded={open} aria-label="Toggle navigation">{open ? <X className="h-5 w-5" /> : <Menu className="h-5 w-5" />}</button>
+    <header className="sticky top-0 z-50 border-b border-slate-200/80 bg-white/90 backdrop-blur-xl">
+      <div className="mx-auto flex h-16 max-w-[1600px] items-center justify-between gap-4 px-4 sm:px-6 lg:px-8">
+        <div className="flex min-w-0 items-center gap-3 sm:gap-5">
+          <button
+            type="button"
+            onClick={onMenuClick}
+            className="rounded-xl p-2 text-slate-600 transition hover:bg-slate-100 lg:hidden"
+            aria-label="Open workspace navigation"
+            aria-controls="primary-sidebar"
+            aria-expanded={menuOpen}
+          >
+            <Menu className="h-5 w-5" />
+          </button>
+          <Link
+            to="/"
+            className="flex shrink-0 items-center gap-2.5 text-slate-950"
+            aria-label="HealthBridge home"
+          >
+            <span className="grid h-9 w-9 place-items-center rounded-xl bg-indigo-600 text-white shadow-sm shadow-indigo-200">
+              <HeartPulse className="h-5 w-5" />
+            </span>
+            <span className="hidden text-[15px] font-extrabold tracking-tight sm:inline">
+              HealthBridge
+            </span>
+          </Link>
+          <span className="hidden h-7 w-px bg-slate-200 sm:block" />
+          <div className="min-w-0">
+            <p className="truncate text-sm font-bold text-slate-900">{title}</p>
+            <p className="hidden text-[11px] font-medium text-slate-500 sm:block">
+              {roleLabels[user.role] ?? "Secure healthcare workspace"}
+            </p>
           </div>
         </div>
+
+        <div className="flex shrink-0 items-center gap-1 sm:gap-3">
+          <NavLink
+            to="/notifications"
+            aria-label={`Notifications${unreadCount ? `, ${unreadCount} unread` : notificationLoadError ? ", unread count unavailable" : ""}`}
+            title={notificationLoadError ? "Unread notification count unavailable" : undefined}
+            className={({ isActive }) =>
+              `relative rounded-xl p-2.5 transition ${
+                isActive
+                  ? "bg-indigo-50 text-indigo-700"
+                  : "text-slate-500 hover:bg-slate-100 hover:text-indigo-600"
+              }`
+            }
+          >
+            <Bell className="h-5 w-5" />
+            {unreadCount > 0 && (
+              <span className="absolute right-1 top-1 grid h-4 min-w-4 place-items-center rounded-full bg-rose-600 px-1 text-[10px] font-bold text-white ring-2 ring-white">
+                {unreadCount > 99 ? "99+" : unreadCount}
+              </span>
+            )}
+          </NavLink>
+
+          <div className="hidden items-center gap-2.5 border-l border-slate-200 pl-3 sm:flex">
+            <span className="grid h-9 w-9 place-items-center rounded-full bg-indigo-50 text-xs font-extrabold text-indigo-700">
+              {initials || "HB"}
+            </span>
+            <div className="max-w-36">
+              <p className="truncate text-xs font-bold text-slate-900">
+                {user.full_name}
+              </p>
+              <p className="mt-0.5 truncate text-[10px] font-semibold uppercase tracking-wider text-slate-500">
+                {user.role}
+              </p>
+            </div>
+          </div>
+          <button
+            type="button"
+            onClick={logout}
+            className="rounded-xl p-2.5 text-slate-500 transition hover:bg-rose-50 hover:text-rose-600"
+            title="Sign out"
+            aria-label="Sign out"
+          >
+            <LogOut className="h-5 w-5" />
+          </button>
+        </div>
       </div>
-      {open && <nav className="border-t border-slate-200 bg-white px-4 py-3 shadow-lg lg:hidden" aria-label="Mobile navigation"><div className="mx-auto grid max-w-7xl gap-1">{links.map(([label, path, Icon]) => <NavLink key={path} to={path} onClick={() => setOpen(false)} className={linkClass}><Icon className="h-4 w-4" />{label}</NavLink>)}</div></nav>}
     </header>
   );
 };
