@@ -54,6 +54,24 @@ Review generated migrations before applying them. To revert one revision, run
 `alembic downgrade -1`. The compatibility helper `python -m app.db.init_db`
 also applies migrations up to the latest revision.
 
+## Continuous integration
+
+The GitHub Actions workflow runs the backend test suite and checks the frontend
+with Oxlint and a production Vite build on pushes and pull requests. Run the
+backend check from `server`:
+
+```powershell
+python -m pytest -q
+```
+
+Run the frontend checks from `client/api`:
+
+```powershell
+npm ci
+npm run lint
+npm run build
+```
+
 The API does not create or alter tables at startup. Apply migrations before
 starting the service. For a database that already has the complete schema
 created by an older HealthBridge version, back it up and verify the schema
