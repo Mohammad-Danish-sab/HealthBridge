@@ -32,6 +32,17 @@ async def list_available_slots(
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_user)
 ):
+    doctor = await db.scalar(
+        select(DoctorProfile.id)
+        .join(User, DoctorProfile.user_id == User.id)
+        .where(
+            DoctorProfile.id == doctor_id,
+            DoctorProfile.is_approved.is_(True),
+            User.is_active.is_(True),
+        )
+    )
+    if doctor is None:
+        raise HTTPException(status_code=404, detail="Doctor profile not found.")
     return await get_available_slots(db, doctor_id, target_date)
 
 @router.post("/book", response_model=AppointmentResponse, status_code=status.HTTP_201_CREATED)
@@ -41,8 +52,16 @@ async def book_appointment(
     current_user: User = Depends(allow_patient)
 ):
     # Verify doctor existence
-    doc_res = await db.execute(select(DoctorProfile).where(DoctorProfile.id == booking_in.doctor_id))
-    doctor = doc_res.scalars().first()
+    doctor = await db.scalar(
+        select(DoctorProfile)
+        .options(selectinload(DoctorProfile.user))
+        .join(User, DoctorProfile.user_id == User.id)
+        .where(
+            DoctorProfile.id == booking_in.doctor_id,
+            DoctorProfile.is_approved.is_(True),
+            User.is_active.is_(True),
+        )
+    )
     if not doctor:
         raise HTTPException(status_code=404, detail="Doctor profile not found.")
 

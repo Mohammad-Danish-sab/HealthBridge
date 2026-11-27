@@ -10,6 +10,7 @@ from app.db.session import get_db
 from app.models.doctor import DoctorAvailability, DoctorProfile
 from app.models.user import User, UserRole
 from app.schemas.doctor import AvailabilityItem, DoctorProfileCreate, DoctorProfileResponse
+from app.services.audit import log_action
 
 
 router = APIRouter(prefix="/doctors", tags=["Doctors"])
@@ -25,7 +26,9 @@ async def search_doctors(
     query = (
         select(DoctorProfile)
         .options(selectinload(DoctorProfile.user))
+        .join(User, DoctorProfile.user_id == User.id)
         .where(DoctorProfile.is_approved.is_(True))
+        .where(User.is_active.is_(True))
         .order_by(DoctorProfile.id)
     )
     if specialization:
@@ -41,7 +44,9 @@ async def list_doctors(
     result = await db.scalars(
         select(DoctorProfile)
         .options(selectinload(DoctorProfile.user))
+        .join(User, DoctorProfile.user_id == User.id)
         .where(DoctorProfile.is_approved.is_(True))
+        .where(User.is_active.is_(True))
         .order_by(DoctorProfile.id)
     )
     return list(result.all())
@@ -117,8 +122,22 @@ async def verify_doctor(
         raise HTTPException(status_code=404, detail="Doctor profile not found.")
     profile.is_approved = True
     await db.commit()
-    await db.refresh(profile)
-    return profile
+    await log_action(
+        db,
+        current_user.id,
+        "VERIFY_DOCTOR",
+        "DoctorProfile",
+        profile.id,
+        "Approved doctor credentials",
+    )
+    result = await db.scalar(
+        select(DoctorProfile)
+        .options(selectinload(DoctorProfile.user))
+        .where(DoctorProfile.id == doctor_id)
+    )
+    if result is None:
+        raise HTTPException(status_code=500, detail="The doctor profile could not be loaded.")
+    return result
 
 
 @router.put("/me/availability", response_model=list[AvailabilityItem])
@@ -169,7 +188,9 @@ async def read_doctor(
         .where(
             DoctorProfile.id == doctor_id,
             DoctorProfile.is_approved.is_(True),
+            User.is_active.is_(True),
         )
+        .join(User, DoctorProfile.user_id == User.id)
     )
     if profile is None:
         raise HTTPException(status_code=404, detail="Doctor profile not found.")

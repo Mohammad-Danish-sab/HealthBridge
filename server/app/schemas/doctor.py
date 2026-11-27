@@ -22,6 +22,7 @@ class DoctorProfileResponse(BaseModel):
     user_id: int
     specialization: str
     license_number: str
+    qualifications: str
     experience_years: int
     bio: str | None
     consultation_fee: float
