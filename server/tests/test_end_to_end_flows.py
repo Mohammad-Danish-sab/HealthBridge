@@ -1,8 +1,11 @@
 import pytest
 from sqlalchemy import select
+from sqlalchemy.exc import OperationalError
 
 from app.api.deps import hash_password
+from app.db.session import get_db
 from app.models.user import User, UserRole
+from app.main import app
 
 
 @pytest.mark.asyncio
@@ -18,6 +21,36 @@ async def test_registration_allows_local_vite_origin(client):
 
     assert response.status_code == 200
     assert response.headers["access-control-allow-origin"] == "http://localhost:5173"
+
+
+@pytest.mark.asyncio
+async def test_health_endpoints_separate_liveness_and_readiness(client):
+    liveness = await client.get("/health")
+    readiness = await client.get("/health/ready")
+
+    assert liveness.status_code == 200
+    assert liveness.json()["status"] == "healthy"
+    assert readiness.status_code == 200
+    assert readiness.json()["status"] == "ready"
+
+
+@pytest.mark.asyncio
+async def test_readiness_returns_service_unavailable_when_database_is_down(client):
+    class UnavailableSession:
+        async def execute(self, statement):
+            raise OperationalError(statement, {}, RuntimeError("database down"))
+
+    async def unavailable_db():
+        yield UnavailableSession()
+
+    app.dependency_overrides[get_db] = unavailable_db
+    try:
+        response = await client.get("/health/ready")
+    finally:
+        app.dependency_overrides.pop(get_db, None)
+
+    assert response.status_code == 503
+    assert response.json() == {"detail": "Database unavailable."}
 
 
 @pytest.mark.asyncio

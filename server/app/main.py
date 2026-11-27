@@ -1,9 +1,17 @@
+import logging
 from fastapi import FastAPI
+from fastapi import Depends, HTTPException, status
 from fastapi.middleware.cors import CORSMiddleware
 from contextlib import asynccontextmanager
+from sqlalchemy import text
+from sqlalchemy.exc import SQLAlchemyError
+from sqlalchemy.ext.asyncio import AsyncSession
 from app.core.config import settings
 from app.api.v1 import auth, doctors, appointments, records, pharmacy, admin, communication, ai, complaints
-from app.db.session import engine
+from app.db.session import engine, get_db
+
+
+logger = logging.getLogger(__name__)
 
 
 @asynccontextmanager
@@ -52,3 +60,17 @@ async def health_check():
         "service": settings.PROJECT_NAME,
         "version": "1.0.0"
     }
+
+
+@app.get("/health/ready", tags=["Health"])
+async def readiness_check(db: AsyncSession = Depends(get_db)):
+    try:
+        await db.execute(text("SELECT 1"))
+    except SQLAlchemyError as exc:
+        logger.exception("Readiness check failed because the database is unavailable.")
+        raise HTTPException(
+            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+            detail="Database unavailable.",
+        ) from exc
+
+    return {"status": "ready", "service": settings.PROJECT_NAME}
