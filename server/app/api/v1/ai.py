@@ -185,8 +185,16 @@ async def ai_summarize_complaint(
     complaint = res.scalars().first()
     if not complaint:
         raise HTTPException(status_code=404, detail="Complaint not found.")
-
-    summary = await summarize_admin_complaint(complaint.id, complaint.subject, complaint.description)
+    try:
+        summary = await summarize_admin_complaint(
+            complaint.id,
+            complaint.subject,
+            complaint.description,
+        )
+    except ValueError as ve:
+        raise HTTPException(status_code=400, detail=str(ve)) from ve
+    except RuntimeError as re_err:
+        raise HTTPException(status_code=503, detail=str(re_err)) from re_err
     await log_action(
         db, current_user.id, "AI_SUMMARIZE_COMPLAINT", "Complaint", complaint.id, "Generated AI triage summary"
     )

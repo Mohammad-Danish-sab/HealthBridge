@@ -77,7 +77,7 @@ async def create_my_profile(
     )
     if existing is not None:
         raise HTTPException(status_code=409, detail="A doctor profile already exists.")
-    profile_data = profile_in.model_dump(exclude={"qualifications"})
+    profile_data = profile_in.model_dump()
     if not profile_data.get("license_number"):
         profile_data["license_number"] = f"TEMP-{current_user.id}"
     profile = DoctorProfile(user_id=current_user.id, **profile_data)

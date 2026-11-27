@@ -41,6 +41,14 @@ def test_direct_chat_migration_supports_sqlite_upgrade_and_downgrade(tmp_path):
         assert message_columns["appointment_id"][3] == 0
         assert message_columns["conversation_id"][3] == 0
 
+        doctor_columns = {
+            column[1]: column
+            for column in connection.execute(
+                "PRAGMA table_info(doctor_profiles)"
+            )
+        }
+        assert "qualifications" in doctor_columns
+
         foreign_keys = {
             row[2]: row[3]
             for row in connection.execute("PRAGMA foreign_key_list(messages)")

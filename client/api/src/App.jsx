@@ -35,6 +35,10 @@ import AvailabilityManager from "./pages/doctor/AvailabilityManager";
 import AdminDashboard from "./pages/admin/AdminDashboard";
 import AdminUsers from "./pages/admin/AdminUsers";
 import AdminPharmacy from "./pages/admin/AdminPharmacy";
+import AdminDoctors from "./pages/admin/AdminDoctors";
+import AdminAuditLogs from "./pages/admin/AdminAuditLogs";
+import AdminComplaints from "./pages/admin/AdminComplaints";
+import PatientComplaints from "./pages/PatientComplaints";
 
 const RootRedirect = () => {
   const { user, loading } = useAuth();
@@ -92,6 +96,7 @@ function App() {
                 <Route path="/prescriptions" element={<MedicalRecords />} />
                 <Route path="/pharmacy" element={<PharmacyCatalog />} />
                 <Route path="/ai-assistant" element={<AIAssistant />} />
+                <Route path="/support" element={<PatientComplaints />} />
               </Route>
 
               {/* Doctor Protected Routes */}
@@ -121,6 +126,9 @@ function App() {
                 <Route path="/admin/dashboard" element={<AdminDashboard />} />
                 <Route path="/admin/users" element={<AdminUsers />} />
                 <Route path="/admin/pharmacy" element={<AdminPharmacy />} />
+                <Route path="/admin/doctors" element={<AdminDoctors />} />
+                <Route path="/admin/audit" element={<AdminAuditLogs />} />
+                <Route path="/admin/complaints" element={<AdminComplaints />} />
               </Route>
 
               <Route path="*" element={<RootRedirect />} />

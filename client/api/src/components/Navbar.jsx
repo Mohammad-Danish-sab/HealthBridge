@@ -1,13 +1,13 @@
 import React, { useEffect, useRef, useState } from "react";
 import { Link, NavLink } from "react-router-dom";
 import { useAuth } from "../context/AuthContext";
-import { Bell, Bot, Calendar, FileText, LayoutDashboard, LogOut, Menu, PackageOpen, ShieldCheck, ShoppingBag, Stethoscope, Users, X } from "lucide-react";
+import { Bell, Bot, Calendar, FileText, LayoutDashboard, LifeBuoy, LogOut, Menu, PackageOpen, ShieldCheck, ShoppingBag, Stethoscope, Users, X } from "lucide-react";
 import { chatService } from "../services/chatService";
 
 const patientLinks = [
   ["Dashboard", "/dashboard", LayoutDashboard], ["Find care", "/doctors", Stethoscope],
   ["Appointments", "/appointments", Calendar], ["Records", "/medical-records", FileText], ["Pharmacy", "/pharmacy", ShoppingBag],
-  ["AI Assistant", "/ai-assistant", Bot],
+  ["AI Assistant", "/ai-assistant", Bot], ["Support", "/support", LifeBuoy],
 ];
 const doctorLinks = [
   ["Dashboard", "/doctor/dashboard", LayoutDashboard], ["Appointments", "/doctor/appointments", Calendar],
@@ -15,6 +15,7 @@ const doctorLinks = [
 ];
 const adminLinks = [
   ["Command center", "/admin/dashboard", LayoutDashboard], ["Users", "/admin/users", ShieldCheck], ["Pharmacy", "/admin/pharmacy", PackageOpen],
+  ["Doctors", "/admin/doctors", Stethoscope], ["Complaints", "/admin/complaints", LifeBuoy], ["Audit logs", "/admin/audit", FileText],
 ];
 
 export const Navbar = () => {

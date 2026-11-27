@@ -25,4 +25,27 @@ export const adminService = {
     const response = await api.get("/admin/audit-logs", { params: { limit } });
     return response.data;
   },
+
+  getComplaints: async () => {
+    const response = await api.get("/admin/complaints");
+    return response.data;
+  },
+
+  updateComplaint: async (complaintId, status, resolutionNotes = null) => {
+    const response = await api.patch(
+      `/admin/complaints/${complaintId}`,
+      {
+        status,
+        resolution_notes: resolutionNotes,
+      },
+    );
+    return response.data;
+  },
+
+  summarizeComplaint: async (complaintId) => {
+    const response = await api.post("/ai/admin/complaints/summarize", {
+      complaint_id: complaintId,
+    });
+    return response.data;
+  },
 };

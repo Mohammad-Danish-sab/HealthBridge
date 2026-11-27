@@ -269,3 +269,49 @@ async def test_core_healthcare_workflow(client, db_session):
         headers=other_doctor_headers,
     )
     assert forbidden_records.status_code == 403
+
+    complaint_res = await client.post(
+        "/api/v1/complaints",
+        headers=p_headers,
+        json={
+            "subject": "Appointment reminder issue",
+            "description": "I did not receive a reminder before my scheduled appointment.",
+        },
+    )
+    assert complaint_res.status_code == 201
+    complaint_id = complaint_res.json()["id"]
+
+    my_complaints = await client.get(
+        "/api/v1/complaints/my",
+        headers=p_headers,
+    )
+    assert my_complaints.status_code == 200
+    assert len(my_complaints.json()) == 1
+
+    admin_complaints = await client.get(
+        "/api/v1/admin/complaints",
+        headers=a_headers,
+    )
+    assert admin_complaints.status_code == 200
+    assert any(
+        complaint["id"] == complaint_id
+        for complaint in admin_complaints.json()
+    )
+
+    updated_complaint = await client.patch(
+        f"/api/v1/admin/complaints/{complaint_id}",
+        headers=a_headers,
+        json={
+            "status": "RESOLVED",
+            "resolution_notes": "Reminder delivery settings were reviewed.",
+        },
+    )
+    assert updated_complaint.status_code == 200
+    assert updated_complaint.json()["status"] == "RESOLVED"
+
+    ai_complaint_res = await client.post(
+        "/api/v1/ai/admin/complaints/summarize",
+        headers=a_headers,
+        json={"complaint_id": complaint_id},
+    )
+    assert ai_complaint_res.status_code in (200, 503)

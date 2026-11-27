@@ -27,6 +27,7 @@ class DoctorProfile(Base):
     )
     specialization: Mapped[str] = mapped_column(String(150), nullable=False)
     license_number: Mapped[str] = mapped_column(String(100), unique=True, nullable=False)
+    qualifications: Mapped[str] = mapped_column(String(500), default="", nullable=False)
     experience_years: Mapped[int] = mapped_column(Integer, default=0, nullable=False)
     bio: Mapped[str | None] = mapped_column(Text, nullable=True)
     consultation_fee: Mapped[float] = mapped_column(Float, default=0, nullable=False)
