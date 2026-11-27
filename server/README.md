@@ -43,6 +43,18 @@ Build the API image from the `server` directory:
 docker build -t healthbridge-api .
 ```
 
+For a local containerized stack, copy the repository-root `.env.example` to
+`.env`, replace placeholder secrets, and run:
+
+```powershell
+docker compose up --build
+```
+
+This starts PostgreSQL, applies Alembic migrations, and runs the API on port
+8000. The PostgreSQL data volume is persistent. Stop the stack with
+`docker compose down`; add `--volumes` only when explicitly resetting all local
+database data.
+
 Provide a strong `SECRET_KEY`, a PostgreSQL `DATABASE_URL`, and HTTPS
 `BACKEND_CORS_ORIGINS` through the deployment platform's secret/environment
 configuration. Apply database migrations before starting the API:
