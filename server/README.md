@@ -19,6 +19,22 @@ to their async drivers. Alternatively, set `POSTGRES_SERVER` and the
 variables to build the PostgreSQL URL from its parts. Keep secrets in `.env`;
 do not commit that file.
 
+## Production settings
+
+Set `ENVIRONMENT=production` before starting a production deployment. Startup
+then rejects the development JWT key, non-PostgreSQL databases, and wildcard,
+local, or non-HTTPS CORS origins. Generate a unique signing key rather than
+reusing the example value:
+
+```powershell
+python -c "import secrets; print(secrets.token_urlsafe(48))"
+```
+
+Configure `SECRET_KEY`, `DATABASE_URL`, and `BACKEND_CORS_ORIGINS` in the
+deployment environment. `BACKEND_CORS_ORIGINS` is a JSON array, for example
+`["https://app.example.com"]`. Interactive API documentation and the OpenAPI
+schema are disabled in production.
+
 ## Apply database migrations
 
 From the `server` directory with the project environment activated:

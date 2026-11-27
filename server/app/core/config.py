@@ -1,5 +1,7 @@
 from pathlib import Path
+from typing import Literal
 
+from pydantic import model_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
 from sqlalchemy.engine import URL, make_url
 
@@ -10,6 +12,7 @@ SERVER_ROOT = Path(__file__).resolve().parents[2]
 class Settings(BaseSettings):
     PROJECT_NAME: str = "HealthBridge API"
     API_V1_STR: str = "/api/v1"
+    ENVIRONMENT: Literal["development", "test", "staging", "production"] = "development"
     SECRET_KEY: str = "CHANGE_THIS_IN_PRODUCTION_SECRET_KEY_MIN_32_CHARS"
     ACCESS_TOKEN_EXPIRE_MINUTES: int = 60 * 24 * 8
 
@@ -34,6 +37,32 @@ class Settings(BaseSettings):
         extra="ignore",
         case_sensitive=False,
     )
+
+    @model_validator(mode="after")
+    def validate_production_settings(self) -> "Settings":
+        if self.ENVIRONMENT != "production":
+            return self
+
+        if (
+            len(self.SECRET_KEY) < 32
+            or self.SECRET_KEY == "CHANGE_THIS_IN_PRODUCTION_SECRET_KEY_MIN_32_CHARS"
+        ):
+            raise ValueError(
+                "SECRET_KEY must be configured with at least 32 characters in production."
+            )
+        if self.database_url.get_backend_name() != "postgresql":
+            raise ValueError("Production deployments must use PostgreSQL.")
+        if not self.BACKEND_CORS_ORIGINS:
+            raise ValueError("Configure BACKEND_CORS_ORIGINS for production.")
+        if any(
+            origin == "*"
+            or not origin.startswith("https://")
+            for origin in self.BACKEND_CORS_ORIGINS
+        ):
+            raise ValueError(
+                "Production CORS origins must be explicit HTTPS origins."
+            )
+        return self
 
     @property
     def database_url(self) -> URL:

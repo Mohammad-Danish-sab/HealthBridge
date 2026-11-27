@@ -1,5 +1,7 @@
 from pathlib import Path
 
+import pytest
+
 from app.core.config import SERVER_ROOT, Settings
 
 
@@ -46,3 +48,59 @@ def test_postgres_db_url_setting_uses_async_driver():
     assert url.database == "healthbridge"
     assert url.query["ssl"] == "require"
     assert "sslmode" not in url.query
+
+
+def test_production_settings_require_strong_secret():
+    with pytest.raises(ValueError, match="SECRET_KEY"):
+        Settings(
+            ENVIRONMENT="production",
+            SECRET_KEY="CHANGE_THIS_IN_PRODUCTION_SECRET_KEY_MIN_32_CHARS",
+            DATABASE_URL="postgresql://user:password@db.example.com/healthbridge",
+            BACKEND_CORS_ORIGINS=["https://healthbridge.example.com"],
+            _env_file=None,
+        )
+
+
+def test_production_settings_require_postgresql():
+    with pytest.raises(ValueError, match="PostgreSQL"):
+        Settings(
+            ENVIRONMENT="production",
+            SECRET_KEY="x" * 48,
+            DATABASE_URL="sqlite:///healthbridge.db",
+            BACKEND_CORS_ORIGINS=["https://healthbridge.example.com"],
+            _env_file=None,
+        )
+
+
+def test_production_settings_reject_local_cors_origins():
+    with pytest.raises(ValueError, match="CORS"):
+        Settings(
+            ENVIRONMENT="production",
+            SECRET_KEY="x" * 48,
+            DATABASE_URL="postgresql://user:password@db.example.com/healthbridge",
+            BACKEND_CORS_ORIGINS=["http://localhost:5173"],
+            _env_file=None,
+        )
+
+
+def test_production_settings_accept_explicit_secure_configuration():
+    settings = Settings(
+        ENVIRONMENT="production",
+        SECRET_KEY="x" * 48,
+        DATABASE_URL="postgresql://user:password@db.example.com/healthbridge",
+        BACKEND_CORS_ORIGINS=["https://healthbridge.example.com"],
+        _env_file=None,
+    )
+
+    assert settings.ENVIRONMENT == "production"
+
+
+def test_production_settings_reject_non_https_cors_origins():
+    with pytest.raises(ValueError, match="HTTPS"):
+        Settings(
+            ENVIRONMENT="production",
+            SECRET_KEY="x" * 48,
+            DATABASE_URL="postgresql://user:password@db.example.com/healthbridge",
+            BACKEND_CORS_ORIGINS=["http://healthbridge.example.com"],
+            _env_file=None,
+        )
