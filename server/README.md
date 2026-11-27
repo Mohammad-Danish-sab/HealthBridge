@@ -58,6 +58,20 @@ on port 8000. The PostgreSQL data volume is persistent; Redis is internal to
 the Compose network. Stop the stack with `docker compose down`; add `--volumes`
 only when explicitly resetting all local database data.
 
+To create the first administrator, set `ADMIN_BOOTSTRAP_EMAIL`,
+`ADMIN_BOOTSTRAP_PASSWORD` (a unique passphrase of at least 16 characters),
+and `ADMIN_BOOTSTRAP_FULL_NAME` in the root `.env` file. Never use `ADMIN` as
+the password. After starting the stack so migrations are applied, run this
+one-time command from the repository root:
+
+```powershell
+docker compose run --rm --entrypoint python api -m app.bootstrap_admin
+```
+
+The command refuses to run if an administrator already exists. Remove the
+bootstrap password from `.env` after account creation. Then sign in through the
+normal `/login` page; administrators are redirected to `/admin/dashboard`.
+
 Provide a strong `SECRET_KEY`, a PostgreSQL `DATABASE_URL`, and HTTPS
 `BACKEND_CORS_ORIGINS` through the deployment platform's secret/environment
 configuration. Apply database migrations before starting the API:
